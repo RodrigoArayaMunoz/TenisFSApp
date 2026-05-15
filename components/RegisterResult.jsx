@@ -52,6 +52,150 @@ const INITIAL_ROWS = [
   },
 ];
 
+const parseScore = (value) => {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const parsedValue = Number.parseInt(trimmedValue, 10);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+};
+
+const getRegularSetWinner = (playerAScore, playerBScore, setNumber) => {
+  if (playerAScore === null || playerBScore === null) {
+    return {
+      error: `Debe completar ambos marcadores del set ${setNumber}.`,
+    };
+  }
+
+  if (playerAScore === playerBScore) {
+    return {
+      error: `El set ${setNumber} no puede terminar empatado.`,
+    };
+  }
+
+  const higherScore = Math.max(playerAScore, playerBScore);
+  const lowerScore = Math.min(playerAScore, playerBScore);
+
+  const isValidSetScore =
+    (higherScore === 6 && lowerScore <= 4) ||
+    (higherScore === 7 && (lowerScore === 5 || lowerScore === 6));
+
+  if (!isValidSetScore) {
+    return {
+      error: `El marcador del set ${setNumber} no es válido.`,
+    };
+  }
+
+  return {
+    winnerIndex: playerAScore > playerBScore ? 0 : 1,
+  };
+};
+
+const getSuperTiebreakWinner = (playerAScore, playerBScore) => {
+  if (playerAScore === null || playerBScore === null) {
+    return {
+      error: 'Debe completar ambos puntajes del supertiebreak.',
+    };
+  }
+
+  if (playerAScore === playerBScore) {
+    return {
+      error: 'El supertiebreak no puede terminar empatado.',
+    };
+  }
+
+  const higherScore = Math.max(playerAScore, playerBScore);
+  const lowerScore = Math.min(playerAScore, playerBScore);
+
+  if (higherScore < 10 || higherScore - lowerScore < 2) {
+    return {
+      error: 'El supertiebreak debe ganarse con al menos 10 puntos y 2 de diferencia.',
+    };
+  }
+
+  return {
+    winnerIndex: playerAScore > playerBScore ? 0 : 1,
+  };
+};
+
+const calculateMatchResult = (rows) => {
+  const [playerA, playerB] = rows;
+
+  if (!playerA.name || !playerB.name) {
+    return {
+      error: 'Debe seleccionar a ambos jugadores.',
+    };
+  }
+
+  if (playerA.name === playerB.name) {
+    return {
+      error: 'Los jugadores no pueden ser iguales.',
+    };
+  }
+
+  const parsedSets = [0, 1, 2].map((setIndex) => [
+    parseScore(playerA.sets[setIndex]),
+    parseScore(playerB.sets[setIndex]),
+  ]);
+
+  const firstSetResult = getRegularSetWinner(parsedSets[0][0], parsedSets[0][1], 1);
+  if (firstSetResult.error) {
+    return firstSetResult;
+  }
+
+  const secondSetResult = getRegularSetWinner(parsedSets[1][0], parsedSets[1][1], 2);
+  if (secondSetResult.error) {
+    return secondSetResult;
+  }
+
+  const hasSuperTiebreakValues =
+    parsedSets[2][0] !== null || parsedSets[2][1] !== null;
+
+  if (firstSetResult.winnerIndex === secondSetResult.winnerIndex) {
+    if (hasSuperTiebreakValues) {
+      return {
+        error: 'Si el partido terminó 2-0, no debe ingresar supertiebreak.',
+      };
+    }
+
+    const winnerIndex = firstSetResult.winnerIndex;
+    const loserIndex = winnerIndex === 0 ? 1 : 0;
+
+    return {
+      winner: rows[winnerIndex].name,
+      loser: rows[loserIndex].name,
+      winnerPoints: 3,
+      loserPoints: 0,
+      setsScore: '2-0',
+      decidedBySuperTiebreak: false,
+    };
+  }
+
+  const superTiebreakResult = getSuperTiebreakWinner(
+    parsedSets[2][0],
+    parsedSets[2][1]
+  );
+
+  if (superTiebreakResult.error) {
+    return superTiebreakResult;
+  }
+
+  const winnerIndex = superTiebreakResult.winnerIndex;
+  const loserIndex = winnerIndex === 0 ? 1 : 0;
+
+  return {
+    winner: rows[winnerIndex].name,
+    loser: rows[loserIndex].name,
+    winnerPoints: 2,
+    loserPoints: 1,
+    setsScore: '2-1',
+    decidedBySuperTiebreak: true,
+  };
+};
+
 export default function RegisterResult() {
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
@@ -66,13 +210,15 @@ export default function RegisterResult() {
   };
 
   const updateSet = (rowIndex, setIndex, value) => {
+    const sanitizedValue = value.replace(/[^0-9]/g, '');
+
     setRows((currentRows) =>
       currentRows.map((row, index) =>
         index === rowIndex
           ? {
               ...row,
               sets: row.sets.map((setValue, currentSetIndex) =>
-                currentSetIndex === setIndex ? value : setValue
+                currentSetIndex === setIndex ? sanitizedValue : setValue
               ),
             }
           : row
@@ -113,14 +259,17 @@ export default function RegisterResult() {
     : LEAGUE_B_PLAYERS.filter((player) => player.toLowerCase().includes(query));
 
   const handleSubmitResult = () => {
-    const hasAnyScore = rows.some((row) =>
-      row.sets.some((setValue) => setValue.trim().length > 0)
-    );
+    const result = calculateMatchResult(rows);
 
-    if (!hasAnyScore) {
-      Alert.alert('Debe registrar resultados en el marcador');
+    if (result.error) {
+      Alert.alert('Resultado inválido', result.error);
       return;
     }
+
+    Alert.alert(
+      'Resultado calculado',
+      `${result.winner} ganó ${result.setsScore}.\nPuntos: ${result.winner} ${result.winnerPoints} - ${result.loser} ${result.loserPoints}`
+    );
   };
 
   return (
