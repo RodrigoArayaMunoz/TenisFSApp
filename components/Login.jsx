@@ -1,4 +1,4 @@
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
@@ -19,6 +19,13 @@ export default function Login() {
             style={styles.logo}
             contentFit="contain"
           />
+
+          <Pressable
+            style={styles.adminButton}
+            onPress={() => router.push('/admin-key')}>
+            <Feather name="user" size={24} color="#FFFFFF" />
+            <Text style={styles.adminButtonText}>Acceso Administrador</Text>
+          </Pressable>
         </View>
 
         <View style={styles.centerSection}>
@@ -68,6 +75,29 @@ const styles = StyleSheet.create({
   logo: {
     width: 170,
     height: 170,
+  },
+  adminButton: {
+    minHeight: 54,
+    borderRadius: 18,
+    backgroundColor: '#2F8A4D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 18,
+    marginTop: 18,
+    shadowColor: '#2F8A4D',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+    width: '100%',
+    maxWidth: 380,
+  },
+  adminButtonText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   centerSection: {
     flex: 1,

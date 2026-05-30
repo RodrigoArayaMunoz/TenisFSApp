@@ -1,0 +1,166 @@
+import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const KEY_LENGTH = 4;
+
+export default function AdminKey() {
+  const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
+  const inputRefs = useRef([]);
+
+  const updateDigit = (index, value) => {
+    const sanitizedValue = value.replace(/[^0-9]/g, '').slice(-1);
+
+    setDigits((currentDigits) =>
+      currentDigits.map((digit, currentIndex) =>
+        currentIndex === index ? sanitizedValue : digit
+      )
+    );
+
+    if (sanitizedValue && index < KEY_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (index, key) => {
+    if (key === 'Backspace' && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.logoSection}>
+          <Image
+            source={require('../assets/images/logofs.png')}
+            style={styles.logo}
+            contentFit="contain"
+          />
+        </View>
+
+        <View style={styles.centerSection}>
+          <View style={styles.keyRow}>
+            {digits.map((digit, index) => (
+              <TextInput
+                key={`admin-key-${index}`}
+                ref={(input) => {
+                  inputRefs.current[index] = input;
+                }}
+                value={digit}
+                onChangeText={(value) => updateDigit(index, value)}
+                onKeyPress={({ nativeEvent }) =>
+                  handleKeyPress(index, nativeEvent.key)
+                }
+                keyboardType="number-pad"
+                maxLength={1}
+                selectTextOnFocus
+                style={styles.keyInput}
+                textAlign="center"
+                selectionColor="#2F8A4D"
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.footerSection}>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => router.replace('/login')}>
+            <Feather name="arrow-left" size={22} color="#FFFFFF" />
+            <Text style={styles.secondaryButtonText}>Volver</Text>
+          </Pressable>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F7F3EE',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#F7F3EE',
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 26,
+    justifyContent: 'space-between',
+  },
+  logoSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingBottom: 22,
+  },
+  logo: {
+    width: 170,
+    height: 170,
+  },
+  centerSection: {
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 150,
+  },
+  keyRow: {
+    width: '100%',
+    maxWidth: 320,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  keyInput: {
+    width: 66,
+    height: 70,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#D6C8BA',
+    color: '#2F3A31',
+    fontSize: 30,
+    fontWeight: '800',
+    shadowColor: '#9F6A3F',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  footerSection: {
+    width: '100%',
+  },
+  secondaryButton: {
+    minHeight: 60,
+    borderRadius: 18,
+    backgroundColor: '#A66132',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#A66132',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+    width: '100%',
+  },
+  secondaryButtonText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});
