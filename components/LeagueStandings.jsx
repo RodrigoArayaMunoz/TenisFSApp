@@ -77,6 +77,18 @@ export default function LeagueStandings({ leagueId = 'B' }) {
           />
         </View>
 
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendSwatch, styles.goldSwatch]} />
+            <Text style={styles.legendText}>Clasificados a copa de oro</Text>
+          </View>
+
+          <View style={styles.legendItem}>
+            <View style={[styles.legendSwatch, styles.silverSwatch]} />
+            <Text style={styles.legendText}>Clasificados a copa de plata</Text>
+          </View>
+        </View>
+
         <View style={styles.tableShell}>
           <View style={styles.tableHeader}>
             <Text style={[styles.headerCell, styles.positionCell]}>#</Text>
@@ -103,7 +115,13 @@ export default function LeagueStandings({ leagueId = 'B' }) {
               }
               showsVerticalScrollIndicator={false}>
               {players.map((player, index) => (
-                <View key={player.id} style={styles.tableRow}>
+                <View
+                  key={player.id}
+                  style={[
+                    styles.tableRow,
+                    index < 8 && styles.goldRow,
+                    index >= 8 && index < 16 && styles.silverRow,
+                  ]}>
                   <Text style={[styles.bodyCell, styles.positionCell]}>
                     {index + 1}
                   </Text>
@@ -180,6 +198,35 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
   },
+  legend: {
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  legendSwatch: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#D8C9BA',
+  },
+  goldSwatch: {
+    backgroundColor: '#FFF36A',
+  },
+  silverSwatch: {
+    backgroundColor: '#A7D8F5',
+  },
+  legendText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#4A3C32',
+  },
   tableShell: {
     flex: 1,
     overflow: 'hidden',
@@ -213,6 +260,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#ECE4DB',
+  },
+  goldRow: {
+    backgroundColor: '#FFF36A',
+  },
+  silverRow: {
+    backgroundColor: '#A7D8F5',
   },
   headerCell: {
     flex: 0.8,
