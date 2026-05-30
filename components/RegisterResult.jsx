@@ -1,7 +1,7 @@
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -13,6 +13,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import {
+  fetchPlayersByLeague,
+  isSupabaseConfigured,
+  submitPendingMatchResult,
+} from '../services/resultService';
+
+const LEAGUE_ID = 'B';
 
 const LEAGUE_B_PLAYERS = [
   'Luis Medina',
@@ -42,15 +50,22 @@ const LEAGUE_B_PLAYERS = [
 const INITIAL_ROWS = [
   {
     id: 'playerA',
+    playerId: null,
     name: '',
     sets: ['', '', ''],
   },
   {
     id: 'playerB',
+    playerId: null,
     name: '',
     sets: ['', '', ''],
   },
 ];
+
+const FALLBACK_PLAYERS = LEAGUE_B_PLAYERS.map((name) => ({
+  id: null,
+  name,
+}));
 
 const parseScore = (value) => {
   const trimmedValue = value.trim();
@@ -167,10 +182,13 @@ const calculateMatchResult = (rows) => {
     return {
       winner: rows[winnerIndex].name,
       loser: rows[loserIndex].name,
+      winnerIndex,
+      loserIndex,
       winnerPoints: 3,
       loserPoints: 0,
       setsScore: '2-0',
       decidedBySuperTiebreak: false,
+      parsedSets,
     };
   }
 
@@ -189,10 +207,13 @@ const calculateMatchResult = (rows) => {
   return {
     winner: rows[winnerIndex].name,
     loser: rows[loserIndex].name,
+    winnerIndex,
+    loserIndex,
     winnerPoints: 2,
     loserPoints: 1,
     setsScore: '2-1',
     decidedBySuperTiebreak: true,
+    parsedSets,
   };
 };
 
@@ -201,11 +222,35 @@ export default function RegisterResult() {
   const [activePickerRow, setActivePickerRow] = useState(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [ballProvider, setBallProvider] = useState('');
+  const [availablePlayers, setAvailablePlayers] = useState(FALLBACK_PLAYERS);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateName = (rowIndex, value) => {
+  useEffect(() => {
+    const loadPlayers = async () => {
+      if (!isSupabaseConfigured) {
+        return;
+      }
+
+      try {
+        const players = await fetchPlayersByLeague(LEAGUE_ID);
+
+        if (players.length > 0) {
+          setAvailablePlayers(players);
+        }
+      } catch {
+        setAvailablePlayers(FALLBACK_PLAYERS);
+      }
+    };
+
+    loadPlayers();
+  }, []);
+
+  const updatePlayer = (rowIndex, player) => {
     setRows((currentRows) =>
       currentRows.map((row, index) =>
-        index === rowIndex ? { ...row, name: value } : row
+        index === rowIndex
+          ? { ...row, playerId: player.id, name: player.name }
+          : row
       )
     );
   };
@@ -237,7 +282,7 @@ export default function RegisterResult() {
     setPlayerSearch('');
   };
 
-  const handlePlayerSelect = (playerName) => {
+  const handlePlayerSelect = (player) => {
     if (activePickerRow === null) {
       return;
     }
@@ -246,7 +291,7 @@ export default function RegisterResult() {
       setBallProvider('');
     }
 
-    updateName(activePickerRow, playerName);
+    updatePlayer(activePickerRow, player);
     closePlayerPicker();
   };
 
@@ -260,10 +305,12 @@ export default function RegisterResult() {
 
   const query = playerSearch.trim().toLowerCase();
   const filteredPlayers = !query
-    ? LEAGUE_B_PLAYERS
-    : LEAGUE_B_PLAYERS.filter((player) => player.toLowerCase().includes(query));
+    ? availablePlayers
+    : availablePlayers.filter((player) =>
+        player.name.toLowerCase().includes(query)
+      );
 
-  const handleSubmitResult = () => {
+  const handleSubmitResult = async () => {
     const result = calculateMatchResult(rows);
 
     if (result.error) {
@@ -276,10 +323,68 @@ export default function RegisterResult() {
       return;
     }
 
-    Alert.alert(
-      'Resultado calculado',
-      `${result.winner} ganó ${result.setsScore}.\nPuntos: ${result.winner} ${result.winnerPoints} - ${result.loser} ${result.loserPoints}\nPelotas: ${ballProvider}`
-    );
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Supabase no configurado',
+        'Debe configurar EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY para guardar resultados.'
+      );
+      return;
+    }
+
+    const ballProviderRow = rows.find((row) => row.name === ballProvider);
+    const hasMissingPlayerIds = rows.some((row) => !row.playerId);
+
+    if (hasMissingPlayerIds || !ballProviderRow?.playerId) {
+      Alert.alert(
+        'Jugadores no sincronizados',
+        'Los jugadores deben existir en la tabla players de Supabase antes de enviar resultados.'
+      );
+      return;
+    }
+
+    const winnerRow = rows[result.winnerIndex];
+    const loserRow = rows[result.loserIndex];
+    const set3PlayerA = result.decidedBySuperTiebreak
+      ? result.parsedSets[2][0]
+      : null;
+    const set3PlayerB = result.decidedBySuperTiebreak
+      ? result.parsedSets[2][1]
+      : null;
+
+    setIsSubmitting(true);
+
+    try {
+      await submitPendingMatchResult({
+        league_id: LEAGUE_ID,
+        player_a_id: rows[0].playerId,
+        player_b_id: rows[1].playerId,
+        ball_provider_id: ballProviderRow.playerId,
+        winner_id: winnerRow.playerId,
+        loser_id: loserRow.playerId,
+        winner_points: result.winnerPoints,
+        loser_points: result.loserPoints,
+        sets_score: result.setsScore,
+        set_1_player_a: result.parsedSets[0][0],
+        set_1_player_b: result.parsedSets[0][1],
+        set_2_player_a: result.parsedSets[1][0],
+        set_2_player_b: result.parsedSets[1][1],
+        set_3_player_a: set3PlayerA,
+        set_3_player_b: set3PlayerB,
+        status: 'Pendiente',
+      });
+
+      setRows(INITIAL_ROWS);
+      setBallProvider('');
+
+      Alert.alert(
+        'Resultado enviado',
+        'El resultado quedo Pendiente para revision del administrador.'
+      );
+    } catch (error) {
+      Alert.alert('No se pudo guardar', error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -385,8 +490,13 @@ export default function RegisterResult() {
             </View>
           </View>
 
-          <Pressable style={styles.primaryButton} onPress={handleSubmitResult}>
-            <Text style={styles.primaryButtonText}>Enviar Resultado</Text>
+          <Pressable
+            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            onPress={handleSubmitResult}
+            disabled={isSubmitting}>
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? 'Enviando...' : 'Enviar Resultado'}
+            </Text>
             <FontAwesome name="whatsapp" size={24} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -435,13 +545,14 @@ export default function RegisterResult() {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
               {filteredPlayers.map((player) => {
-                const isDisabled = selectedByOtherRow.includes(player);
+                const isDisabled = selectedByOtherRow.includes(player.name);
                 const isSelected =
-                  activePickerRow !== null && rows[activePickerRow]?.name === player;
+                  activePickerRow !== null &&
+                  rows[activePickerRow]?.name === player.name;
 
                 return (
                   <Pressable
-                    key={player}
+                    key={player.id ?? player.name}
                     style={[
                       styles.optionRow,
                       isSelected && styles.optionRowSelected,
@@ -455,7 +566,7 @@ export default function RegisterResult() {
                         isSelected && styles.optionTextSelected,
                         isDisabled && styles.optionTextDisabled,
                       ]}>
-                      {player}
+                      {player.name}
                     </Text>
 
                     {isSelected ? (
@@ -678,6 +789,9 @@ const styles = StyleSheet.create({
     elevation: 8,
     width: '100%',
     marginTop: 30,
+  },
+  buttonDisabled: {
+    opacity: 0.65,
   },
   secondaryButton: {
     minHeight: 60,

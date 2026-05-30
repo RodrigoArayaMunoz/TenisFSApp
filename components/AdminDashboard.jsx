@@ -1,9 +1,12 @@
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,215 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const PENDING_RESULTS = [
-  {
-    id: 'result-1',
-    league: 'B',
-    players: [
-      { name: 'Rodrigo Araya', scores: [6, 2, 10] },
-      { name: 'Felipe Soto', scores: [4, 6, 7] },
-    ],
-    ballsProvider: 'Rodrigo Araya',
-  },
-  {
-    id: 'result-2',
-    league: 'B',
-    players: [
-      { name: 'Luis Medina', scores: [6, 6, null] },
-      { name: 'Alexis Urbina', scores: [3, 4, null] },
-    ],
-    ballsProvider: 'Alexis Urbina',
-  },
-  {
-    id: 'result-3',
-    league: 'C',
-    players: [
-      { name: 'Jugador Liga C 1', scores: [7, 4, 10] },
-      { name: 'Jugador Liga C 2', scores: [5, 6, 8] },
-    ],
-    ballsProvider: 'Jugador Liga C 2',
-  },
-  {
-    id: 'result-4',
-    league: 'B',
-    players: [
-      { name: 'Daniel Caroca', scores: [7, 6, null] },
-      { name: 'Rodolfo Hernandez', scores: [5, 4, null] },
-    ],
-    ballsProvider: 'Daniel Caroca',
-  },
-  {
-    id: 'result-5',
-    league: 'B',
-    players: [
-      { name: 'Franco Villarroel', scores: [4, 6, 10] },
-      { name: 'Marcos Villenas', scores: [6, 3, 8] },
-    ],
-    ballsProvider: 'Marcos Villenas',
-  },
-  {
-    id: 'result-6',
-    league: 'C',
-    players: [
-      { name: 'Carlos Riquelme', scores: [6, 7, null] },
-      { name: 'Ignacio Morales', scores: [2, 5, null] },
-    ],
-    ballsProvider: 'Ignacio Morales',
-  },
-  {
-    id: 'result-7',
-    league: 'B',
-    players: [
-      { name: 'Leonel Rojas', scores: [6, 2, 7] },
-      { name: 'Jorge Labrin', scores: [3, 6, 10] },
-    ],
-    ballsProvider: 'Jorge Labrin',
-  },
-  {
-    id: 'result-8',
-    league: 'C',
-    players: [
-      { name: 'Sebastian Fuentes', scores: [6, 6, null] },
-      { name: 'Pablo Carrasco', scores: [1, 4, null] },
-    ],
-    ballsProvider: 'Sebastian Fuentes',
-  },
-  {
-    id: 'result-9',
-    league: 'B',
-    players: [
-      { name: 'Francisco Arias', scores: [7, 3, 10] },
-      { name: 'Bryan Barra', scores: [6, 6, 12] },
-    ],
-    ballsProvider: 'Francisco Arias',
-  },
-  {
-    id: 'result-10',
-    league: 'B',
-    players: [
-      { name: 'Felipe Retamal', scores: [6, 6, null] },
-      { name: 'Ricardo Munoz', scores: [4, 2, null] },
-    ],
-    ballsProvider: 'Felipe Retamal',
-  },
-  {
-    id: 'result-11',
-    league: 'C',
-    players: [
-      { name: 'Matias Contreras', scores: [5, 6, 10] },
-      { name: 'Cristobal Salazar', scores: [7, 4, 6] },
-    ],
-    ballsProvider: 'Cristobal Salazar',
-  },
-  {
-    id: 'result-12',
-    league: 'B',
-    players: [
-      { name: 'Jaime Maripangui', scores: [6, 7, null] },
-      { name: 'Andres Tello', scores: [4, 5, null] },
-    ],
-    ballsProvider: 'Andres Tello',
-  },
-  {
-    id: 'result-13',
-    league: 'C',
-    players: [
-      { name: 'Nicolas Paredes', scores: [6, 3, 8] },
-      { name: 'Tomas Sepulveda', scores: [4, 6, 10] },
-    ],
-    ballsProvider: 'Nicolas Paredes',
-  },
-  {
-    id: 'result-14',
-    league: 'B',
-    players: [
-      { name: 'Jose Valenzuela', scores: [6, 4, 10] },
-      { name: 'Benjamin Mellado', scores: [3, 6, 7] },
-    ],
-    ballsProvider: 'Jose Valenzuela',
-  },
-  {
-    id: 'result-15',
-    league: 'C',
-    players: [
-      { name: 'Diego Herrera', scores: [6, 6, null] },
-      { name: 'Martin Espinoza', scores: [4, 1, null] },
-    ],
-    ballsProvider: 'Martin Espinoza',
-  },
-  {
-    id: 'result-16',
-    league: 'B',
-    players: [
-      { name: 'Diego Lopez', scores: [7, 2, 10] },
-      { name: 'Alvaro Villegas', scores: [5, 6, 4] },
-    ],
-    ballsProvider: 'Alvaro Villegas',
-  },
-  {
-    id: 'result-17',
-    league: 'C',
-    players: [
-      { name: 'Felipe Andrade', scores: [4, 6, 10] },
-      { name: 'Raimundo Soto', scores: [6, 3, 8] },
-    ],
-    ballsProvider: 'Felipe Andrade',
-  },
-  {
-    id: 'result-18',
-    league: 'B',
-    players: [
-      { name: 'Matias Espinoza', scores: [6, 7, null] },
-      { name: 'Diego Valenzuela', scores: [2, 5, null] },
-    ],
-    ballsProvider: 'Diego Valenzuela',
-  },
-  {
-    id: 'result-19',
-    league: 'C',
-    players: [
-      { name: 'Agustin Molina', scores: [7, 6, null] },
-      { name: 'Vicente Reyes', scores: [6, 4, null] },
-    ],
-    ballsProvider: 'Vicente Reyes',
-  },
-  {
-    id: 'result-20',
-    league: 'B',
-    players: [
-      { name: 'Luis Medina', scores: [3, 6, 10] },
-      { name: 'Franco Villarroel', scores: [6, 4, 12] },
-    ],
-    ballsProvider: 'Luis Medina',
-  },
-  {
-    id: 'result-21',
-    league: 'C',
-    players: [
-      { name: 'Joaquin Vera', scores: [6, 1, 10] },
-      { name: 'Bruno Castillo', scores: [2, 6, 5] },
-    ],
-    ballsProvider: 'Joaquin Vera',
-  },
-  {
-    id: 'result-22',
-    league: 'B',
-    players: [
-      { name: 'Alexis Urbina', scores: [6, 6, null] },
-      { name: 'Jorge Labrin', scores: [4, 3, null] },
-    ],
-    ballsProvider: 'Jorge Labrin',
-  },
-  {
-    id: 'result-23',
-    league: 'C',
-    players: [
-      { name: 'Hector Figueroa', scores: [5, 6, 10] },
-      { name: 'Lucas Munoz', scores: [7, 2, 6] },
-    ],
-    ballsProvider: 'Lucas Munoz',
-  },
-];
+import {
+  fetchPendingMatchResults,
+  isSupabaseConfigured,
+  reviewMatchResult,
+} from '../services/resultService';
 
 const ResultCard = ({ result }) => (
   <View style={styles.resultContent}>
@@ -252,14 +51,61 @@ const ResultCard = ({ result }) => (
 
 export default function AdminDashboard() {
   const [activeLeague, setActiveLeague] = useState(null);
+  const [pendingResults, setPendingResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
 
   const filteredResults = useMemo(
     () =>
       activeLeague
-        ? PENDING_RESULTS.filter((result) => result.league === activeLeague)
-        : PENDING_RESULTS,
-    [activeLeague]
+        ? pendingResults.filter((result) => result.league === activeLeague)
+        : pendingResults,
+    [activeLeague, pendingResults]
   );
+
+  const loadPendingResults = useCallback(async ({ refreshing = false } = {}) => {
+    if (!isSupabaseConfigured) {
+      setPendingResults([]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (refreshing) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const results = await fetchPendingMatchResults();
+      setPendingResults(results);
+    } catch (error) {
+      Alert.alert('No se pudieron cargar resultados', error.message);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPendingResults();
+  }, [loadPendingResults]);
+
+  const handleReview = async (resultId, status) => {
+    setReviewingId(resultId);
+
+    try {
+      await reviewMatchResult(resultId, status);
+      setPendingResults((currentResults) =>
+        currentResults.filter((result) => result.id !== resultId)
+      );
+    } catch (error) {
+      Alert.alert('No se pudo revisar', error.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -273,32 +119,59 @@ export default function AdminDashboard() {
           />
         </View>
 
-        <ScrollView
-          style={styles.resultsList}
-          contentContainerStyle={styles.resultsContent}
-          showsVerticalScrollIndicator={false}>
-          {filteredResults.map((result) => (
-            <View key={result.id} style={styles.resultRow}>
-              <ResultCard result={result} />
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#A66132" />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.resultsList}
+            contentContainerStyle={styles.resultsContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => loadPendingResults({ refreshing: true })}
+                tintColor="#A66132"
+              />
+            }
+            showsVerticalScrollIndicator={false}>
+            {filteredResults.map((result) => (
+              <View key={result.id} style={styles.resultRow}>
+                <ResultCard result={result} />
 
-              <View style={styles.actionsColumn}>
-                <Pressable style={[styles.actionButton, styles.validateButton]}>
-                  <Feather name="check" size={19} color="#2F8A4D" />
-                </Pressable>
+                <View style={styles.actionsColumn}>
+                  <Pressable
+                    style={[
+                      styles.actionButton,
+                      styles.validateButton,
+                      reviewingId === result.id && styles.actionButtonDisabled,
+                    ]}
+                    onPress={() => handleReview(result.id, 'Validado')}
+                    disabled={reviewingId === result.id}>
+                    <Feather name="check" size={19} color="#2F8A4D" />
+                  </Pressable>
 
-                <Pressable style={[styles.actionButton, styles.rejectButton]}>
-                  <Feather name="x-circle" size={20} color="#D93434" />
-                </Pressable>
+                  <Pressable
+                    style={[
+                      styles.actionButton,
+                      styles.rejectButton,
+                      reviewingId === result.id && styles.actionButtonDisabled,
+                    ]}
+                    onPress={() => handleReview(result.id, 'Rechazado')}
+                    disabled={reviewingId === result.id}>
+                    <Feather name="x-circle" size={20} color="#D93434" />
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
 
-          {filteredResults.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Sin resultados pendientes</Text>
-            </View>
-          ) : null}
-        </ScrollView>
+            {filteredResults.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>Sin resultados pendientes</Text>
+              </View>
+            ) : null}
+          </ScrollView>
+        )}
 
         <View style={styles.footerSection}>
           <View style={styles.tabsSection}>
@@ -364,6 +237,11 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
   },
+  loadingState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   resultsList: {
     flex: 1,
     marginTop: 18,
@@ -397,6 +275,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 14,
     elevation: 3,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
   validateButton: {
     borderColor: '#B8DDBF',
