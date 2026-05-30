@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -217,6 +219,54 @@ const calculateMatchResult = (rows) => {
   };
 };
 
+const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
+  const [playerA, playerB] = rows;
+  const playerNameWidth = Math.max(playerA.name.length, playerB.name.length, 16);
+  const formatScore = (score) => String(score === null ? '-' : score).padStart(2, ' ');
+  const formatPlayerLine = (player, scores) =>
+    `${player.name.padEnd(playerNameWidth, ' ')}  ${scores
+      .map(formatScore)
+      .join('  ')}`;
+
+  return [
+    'Resultado Liga B',
+    '',
+    '```',
+    formatPlayerLine(
+      playerA,
+      result.parsedSets.map((set) => set[0])
+    ),
+    formatPlayerLine(
+      playerB,
+      result.parsedSets.map((set) => set[1])
+    ),
+    '```',
+    '',
+    `Ganador: ${result.winner}`,
+    `🎾🎾🎾 Pelotas: ${ballProvider}`,
+  ].join('\n');
+};
+
+const openWhatsAppShare = async (message) => {
+  const encodedMessage = encodeURIComponent(message);
+  const appUrl = `whatsapp://send?text=${encodedMessage}`;
+  const webUrl = `https://wa.me/?text=${encodedMessage}`;
+
+  if (Platform.OS === 'web') {
+    await Linking.openURL(webUrl);
+    return;
+  }
+
+  const canOpenWhatsApp = await Linking.canOpenURL(appUrl);
+
+  if (canOpenWhatsApp) {
+    await Linking.openURL(appUrl);
+    return;
+  }
+
+  await Linking.openURL(webUrl);
+};
+
 export default function RegisterResult() {
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
@@ -354,6 +404,12 @@ export default function RegisterResult() {
     setIsSubmitting(true);
 
     try {
+      const whatsAppMessage = buildWhatsAppMessage({
+        rows,
+        result,
+        ballProvider,
+      });
+
       await submitPendingMatchResult({
         league_id: LEAGUE_ID,
         player_a_id: rows[0].playerId,
@@ -376,10 +432,14 @@ export default function RegisterResult() {
       setRows(INITIAL_ROWS);
       setBallProvider('');
 
-      Alert.alert(
-        'Resultado enviado',
-        'El resultado quedo Pendiente para revision del administrador.'
-      );
+      try {
+        await openWhatsAppShare(whatsAppMessage);
+      } catch {
+        Alert.alert(
+          'Resultado enviado',
+          'El resultado quedo Pendiente, pero no se pudo abrir WhatsApp.'
+        );
+      }
     } catch (error) {
       Alert.alert('No se pudo guardar', error.message);
     } finally {
