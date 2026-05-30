@@ -37,12 +37,26 @@ export default function Login() {
         </View>
 
         <View style={styles.tabsSection}>
-          <Pressable style={styles.tabButton}>
+          <Pressable
+            style={styles.tabButton}
+            onPress={() =>
+              router.push({
+                pathname: '/league-standings',
+                params: { leagueId: 'B' },
+              })
+            }>
             <AntDesign name="trophy" size={22} color="#A66132" />
             <Text style={styles.tabButtonText}>Liga B</Text>
           </Pressable>
 
-          <Pressable style={styles.tabButton}>
+          <Pressable
+            style={styles.tabButton}
+            onPress={() =>
+              router.push({
+                pathname: '/league-standings',
+                params: { leagueId: 'C' },
+              })
+            }>
             <AntDesign name="trophy" size={22} color="#A66132" />
             <Text style={styles.tabButtonText}>Liga C</Text>
           </Pressable>

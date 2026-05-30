@@ -64,6 +64,17 @@ export const fetchPlayersByLeague = async (leagueId) => {
   return requestSupabase(`players?${params.toString()}`);
 };
 
+export const fetchLeagueStandings = async (leagueId) => {
+  const params = new URLSearchParams({
+    select: 'id,name,points,played,balls',
+    league_id: `eq.${leagueId}`,
+    active: 'eq.true',
+    order: 'points.desc,balls.desc,name.asc',
+  });
+
+  return requestSupabase(`players?${params.toString()}`);
+};
+
 export const submitPendingMatchResult = async (matchResult) =>
   requestSupabase('match_results', {
     method: 'POST',

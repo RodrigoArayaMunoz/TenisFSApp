@@ -10,6 +10,7 @@ export default function RootLayout() {
         <Stack.Screen name="register-result" />
         <Stack.Screen name="admin-key" />
         <Stack.Screen name="admin-dashboard" />
+        <Stack.Screen name="league-standings" />
       </Stack>
       <StatusBar style="dark" />
     </>
