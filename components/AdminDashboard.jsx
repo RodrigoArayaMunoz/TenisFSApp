@@ -1,7 +1,7 @@
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -50,19 +50,10 @@ const ResultCard = ({ result }) => (
 );
 
 export default function AdminDashboard() {
-  const [activeLeague, setActiveLeague] = useState(null);
   const [pendingResults, setPendingResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
-
-  const filteredResults = useMemo(
-    () =>
-      activeLeague
-        ? pendingResults.filter((result) => result.league === activeLeague)
-        : pendingResults,
-    [activeLeague, pendingResults]
-  );
 
   const loadPendingResults = useCallback(async ({ refreshing = false } = {}) => {
     if (!isSupabaseConfigured) {
@@ -135,7 +126,7 @@ export default function AdminDashboard() {
               />
             }
             showsVerticalScrollIndicator={false}>
-            {filteredResults.map((result) => (
+            {pendingResults.map((result) => (
               <View key={result.id} style={styles.resultRow}>
                 <ResultCard result={result} />
 
@@ -165,7 +156,7 @@ export default function AdminDashboard() {
               </View>
             ))}
 
-            {filteredResults.length === 0 ? (
+            {pendingResults.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>Sin resultados pendientes</Text>
               </View>
@@ -176,21 +167,25 @@ export default function AdminDashboard() {
         <View style={styles.footerSection}>
           <View style={styles.tabsSection}>
             <Pressable
-              style={[
-                styles.tabButton,
-                activeLeague === 'B' && styles.tabButtonActive,
-              ]}
-              onPress={() => setActiveLeague('B')}>
+              style={styles.tabButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/league-standings',
+                  params: { leagueId: 'B' },
+                })
+              }>
               <AntDesign name="trophy" size={22} color="#A66132" />
               <Text style={styles.tabButtonText}>Liga B</Text>
             </Pressable>
 
             <Pressable
-              style={[
-                styles.tabButton,
-                activeLeague === 'C' && styles.tabButtonActive,
-              ]}
-              onPress={() => setActiveLeague('C')}>
+              style={styles.tabButton}
+              onPress={() =>
+                router.push({
+                  pathname: '/league-standings',
+                  params: { leagueId: 'C' },
+                })
+              }>
               <AntDesign name="trophy" size={22} color="#A66132" />
               <Text style={styles.tabButtonText}>Liga C</Text>
             </Pressable>
@@ -391,10 +386,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 4,
-  },
-  tabButtonActive: {
-    borderColor: '#A66132',
-    backgroundColor: '#F8EEE6',
   },
   tabButtonText: {
     fontSize: 20,

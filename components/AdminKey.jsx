@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -20,6 +20,14 @@ export default function AdminKey() {
   const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
   const [isValidating, setIsValidating] = useState(false);
   const inputRefs = useRef([]);
+
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      inputRefs.current[0]?.focus();
+    }, 250);
+
+    return () => clearTimeout(focusTimer);
+  }, []);
 
   const updateDigit = (index, value) => {
     const sanitizedValue = value.replace(/[^0-9]/g, '').slice(-1);
