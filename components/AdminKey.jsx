@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -11,10 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { isSupabaseConfigured, verifyAdminKey } from '../services/adminService';
+
 const KEY_LENGTH = 4;
 
 export default function AdminKey() {
   const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
+  const [isValidating, setIsValidating] = useState(false);
   const inputRefs = useRef([]);
 
   const updateDigit = (index, value) => {
@@ -37,6 +41,46 @@ export default function AdminKey() {
     }
   };
 
+  const clearKey = () => {
+    setDigits(Array(KEY_LENGTH).fill(''));
+    inputRefs.current[0]?.focus();
+  };
+
+  const handleAdminAccess = async () => {
+    const adminKey = digits.join('');
+
+    if (adminKey.length < KEY_LENGTH) {
+      Alert.alert('Clave incompleta', 'Debe ingresar los 4 numeros de la clave.');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Supabase no configurado',
+        'Agrega EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY para validar la clave.'
+      );
+      return;
+    }
+
+    setIsValidating(true);
+
+    try {
+      const isValidAdmin = await verifyAdminKey(adminKey);
+
+      if (!isValidAdmin) {
+        Alert.alert('Clave incorrecta', 'La clave ingresada no corresponde.');
+        clearKey();
+        return;
+      }
+
+      router.push('/admin-dashboard');
+    } catch (error) {
+      Alert.alert('Error de validacion', error.message);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -49,6 +93,8 @@ export default function AdminKey() {
         </View>
 
         <View style={styles.centerSection}>
+          <Text style={styles.title}>Digite clave numerica</Text>
+
           <View style={styles.keyRow}>
             {digits.map((digit, index) => (
               <TextInput
@@ -70,6 +116,16 @@ export default function AdminKey() {
               />
             ))}
           </View>
+
+          <Pressable
+            style={[styles.adminButton, isValidating && styles.buttonDisabled]}
+            onPress={handleAdminAccess}
+            disabled={isValidating}>
+            <Feather name="check-circle" size={24} color="#FFFFFF" />
+            <Text style={styles.adminButtonText}>
+              {isValidating ? 'Validando...' : 'Ingresar'}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.footerSection}>
@@ -116,6 +172,12 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 150,
   },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#6E5C51',
+    marginBottom: 22,
+  },
   keyRow: {
     width: '100%',
     maxWidth: 320,
@@ -139,6 +201,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 4,
+  },
+  adminButton: {
+    minHeight: 54,
+    borderRadius: 18,
+    backgroundColor: '#2F8A4D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 18,
+    marginTop: 28,
+    shadowColor: '#2F8A4D',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 6,
+    width: '100%',
+    maxWidth: 320,
+  },
+  buttonDisabled: {
+    opacity: 0.65,
+  },
+  adminButtonText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   footerSection: {
     width: '100%',

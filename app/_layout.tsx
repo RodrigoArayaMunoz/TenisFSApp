@@ -9,6 +9,7 @@ export default function RootLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="register-result" />
         <Stack.Screen name="admin-key" />
+        <Stack.Screen name="admin-dashboard" />
       </Stack>
       <StatusBar style="dark" />
     </>
