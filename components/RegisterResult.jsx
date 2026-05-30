@@ -200,6 +200,7 @@ export default function RegisterResult() {
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
   const [playerSearch, setPlayerSearch] = useState('');
+  const [ballProvider, setBallProvider] = useState('');
 
   const updateName = (rowIndex, value) => {
     setRows((currentRows) =>
@@ -241,6 +242,10 @@ export default function RegisterResult() {
       return;
     }
 
+    if (rows[activePickerRow]?.name === ballProvider) {
+      setBallProvider('');
+    }
+
     updateName(activePickerRow, playerName);
     closePlayerPicker();
   };
@@ -266,9 +271,14 @@ export default function RegisterResult() {
       return;
     }
 
+    if (!ballProvider) {
+      Alert.alert('Faltan pelotas', 'Debe seleccionar quien puso las pelotas.');
+      return;
+    }
+
     Alert.alert(
       'Resultado calculado',
-      `${result.winner} ganó ${result.setsScore}.\nPuntos: ${result.winner} ${result.winnerPoints} - ${result.loser} ${result.loserPoints}`
+      `${result.winner} ganó ${result.setsScore}.\nPuntos: ${result.winner} ${result.winnerPoints} - ${result.loser} ${result.loserPoints}\nPelotas: ${ballProvider}`
     );
   };
 
@@ -288,6 +298,13 @@ export default function RegisterResult() {
             <Text style={styles.scoreboardTitle}>Marcador</Text>
 
             <View style={styles.table}>
+              <View style={styles.setsHeaderRow}>
+                <View style={styles.playerHeaderCell} />
+                <Text style={styles.setHeaderText}>S1</Text>
+                <Text style={styles.setHeaderText}>S2</Text>
+                <Text style={styles.setHeaderText}>S3</Text>
+              </View>
+
               {rows.map((row, rowIndex) => (
                 <View
                   key={row.id}
@@ -303,7 +320,7 @@ export default function RegisterResult() {
                         styles.playerInput,
                         !row.name && styles.playerPlaceholder,
                       ]}
-                      numberOfLines={1}>
+                      numberOfLines={2}>
                       {row.name || 'Seleccionar'}
                     </Text>
                     <Feather name="chevron-down" size={18} color="#FFFFFF" />
@@ -325,6 +342,46 @@ export default function RegisterResult() {
                   ))}
                 </View>
               ))}
+            </View>
+
+            <View style={styles.ballsSection}>
+              <Text style={styles.ballsTitle}>Pelotas</Text>
+
+              <View style={styles.ballsOptions}>
+                {rows.map((row) => {
+                  const isSelected = row.name === ballProvider;
+                  const isDisabled = !row.name;
+
+                  return (
+                    <Pressable
+                      key={`${row.id}-balls`}
+                      style={[
+                        styles.ballOption,
+                        isSelected && styles.ballOptionSelected,
+                        isDisabled && styles.ballOptionDisabled,
+                      ]}
+                      onPress={() => setBallProvider(row.name)}
+                      disabled={isDisabled}>
+                      <View
+                        style={[
+                          styles.radioOuter,
+                          isSelected && styles.radioOuterSelected,
+                        ]}>
+                        {isSelected ? <View style={styles.radioInner} /> : null}
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.ballOptionText,
+                          isSelected && styles.ballOptionTextSelected,
+                        ]}
+                        numberOfLines={2}>
+                        {row.name || 'Seleccione jugador'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
           </View>
 
@@ -432,16 +489,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F3EE',
     paddingHorizontal: 24,
-    paddingTop: 18,
+    paddingTop: 0,
     paddingBottom: 26,
     justifyContent: 'space-between',
   },
   logoSection: {
-    flex: 1,
+    flex: 0.8,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 16,
-    paddingBottom: 22,
+    justifyContent: 'flex-start',
+    paddingTop: 0,
+    paddingBottom: 10,
   },
   logo: {
     width: 170,
@@ -451,14 +508,14 @@ const styles = StyleSheet.create({
     flex: 1.2,
     width: '100%',
     justifyContent: 'center',
-    marginBottom: 130,
+    marginBottom: 100,
   },
   scoreboardCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 22,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
     shadowColor: '#9F6A3F',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.13,
@@ -466,22 +523,42 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   scoreboardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#8C7B73',
-    marginBottom: 16,
+    marginBottom: 12,
     letterSpacing: 0.3,
   },
   table: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#DDE4EF',
   },
+  setsHeaderRow: {
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F6F8FB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DDE4EF',
+  },
+  playerHeaderCell: {
+    flex: 2.25,
+    borderRightWidth: 4,
+    borderRightColor: '#D8E445',
+  },
+  setHeaderText: {
+    flex: 0.52,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#6E7890',
+  },
   tableRow: {
     flexDirection: 'row',
-    minHeight: 74,
+    minHeight: 58,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#DDE4EF',
@@ -490,9 +567,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   playerCell: {
-    flex: 1.6,
+    flex: 2.25,
     backgroundColor: '#355F9F',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
     flexDirection: 'row',
@@ -501,17 +578,17 @@ const styles = StyleSheet.create({
   },
   playerInput: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
     paddingVertical: 0,
     flex: 1,
-    marginRight: 8,
+    marginRight: 6,
   },
   playerPlaceholder: {
     color: '#D9E1F4',
   },
   setCell: {
-    flex: 0.7,
+    flex: 0.52,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FCFCFD',
@@ -522,9 +599,66 @@ const styles = StyleSheet.create({
     width: '100%',
     textAlign: 'center',
     color: '#141414',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '500',
     paddingVertical: 0,
+  },
+  ballsSection: {
+    marginTop: 12,
+  },
+  ballsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#6E5C51',
+    marginBottom: 8,
+  },
+  ballsOptions: {
+    gap: 8,
+  },
+  ballOption: {
+    minHeight: 38,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E4D9CF',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  ballOptionSelected: {
+    borderColor: '#A66132',
+    backgroundColor: '#F8EEE6',
+  },
+  ballOptionDisabled: {
+    opacity: 0.45,
+  },
+  radioOuter: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#BDAA9A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: '#A66132',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#A66132',
+  },
+  ballOptionText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6E5C51',
+  },
+  ballOptionTextSelected: {
+    color: '#8B522C',
   },
   footerSection: {
     width: '100%',
