@@ -91,6 +91,11 @@ export default function AdminDashboard() {
       setPendingResults((currentResults) =>
         currentResults.filter((result) => result.id !== resultId)
       );
+      Alert.alert(
+        status === 'Validado'
+          ? 'Resultado validado y tabla de posiciones actualizada'
+          : 'Resultado rechazado y tabla de posiciones actualizada'
+      );
     } catch (error) {
       Alert.alert('No se pudo revisar', error.message);
     } finally {
