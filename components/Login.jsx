@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function Login() {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.logoSection}>
           <Image
             source={require('../assets/images/logofs.png')}
@@ -61,7 +64,7 @@ export default function Login() {
             <Text style={styles.tabButtonText}>Liga C</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -72,7 +75,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F3EE',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#F7F3EE',
     paddingHorizontal: 24,
     paddingTop: 18,
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: 150,
+    marginBottom: 80,
   },
   primaryButton: {
     minHeight: 60,
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
     maxWidth: 380,
   },
   primaryButtonText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
   },

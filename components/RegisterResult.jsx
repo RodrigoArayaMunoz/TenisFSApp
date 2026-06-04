@@ -447,7 +447,10 @@ export default function RegisterResult() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         <View style={styles.logoSection}>
           <Image
             source={require('../assets/images/logofs.png')}
@@ -567,7 +570,7 @@ export default function RegisterResult() {
             <Text style={styles.primaryButtonText}>Volver a menu principal</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
 
       <Modal
         visible={activePickerRow !== null}
@@ -655,7 +658,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F3EE',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#F7F3EE',
     paddingHorizontal: 24,
     paddingTop: 0,
@@ -677,7 +680,7 @@ const styles = StyleSheet.create({
     flex: 1.2,
     width: '100%',
     justifyContent: 'center',
-    marginBottom: 100,
+    marginBottom: 54,
   },
   scoreboardCard: {
     width: '100%',
@@ -867,7 +870,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   primaryButtonText: {
-    fontSize: 24,
+    fontSize: 19,
     fontWeight: '700',
     color: '#FFFFFF',
   },

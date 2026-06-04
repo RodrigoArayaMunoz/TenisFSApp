@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -91,7 +92,10 @@ export default function AdminKey() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         <View style={styles.logoSection}>
           <Image
             source={require('../assets/images/logofs.png')}
@@ -144,7 +148,7 @@ export default function AdminKey() {
             <Text style={styles.secondaryButtonText}>Volver</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -155,7 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F3EE',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#F7F3EE',
     paddingHorizontal: 24,
     paddingTop: 18,
@@ -178,7 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginBottom: 150,
+    marginBottom: 80,
   },
   title: {
     fontSize: 22,
@@ -192,10 +196,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   keyInput: {
-    width: 66,
+    flex: 1,
+    maxWidth: 66,
     height: 70,
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
@@ -255,7 +260,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   secondaryButtonText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
   },

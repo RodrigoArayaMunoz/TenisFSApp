@@ -105,8 +105,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 335,
-    height: 335,
+    width: '100%',
+    maxWidth: 335,
+    aspectRatio: 1,
   },
   footer: {
     alignItems: 'center',
