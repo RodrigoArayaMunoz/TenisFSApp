@@ -221,17 +221,16 @@ const calculateMatchResult = (rows) => {
 
 const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
   const [playerA, playerB] = rows;
-  const playerNameWidth = Math.max(playerA.name.length, playerB.name.length, 16);
-  const formatScore = (score) => String(score === null ? '-' : score).padStart(2, ' ');
-  const formatPlayerLine = (player, scores) =>
-    `${player.name.padEnd(playerNameWidth, ' ')}  ${scores
-      .map(formatScore)
-      .join('  ')}`;
+  const formatScore = (score) => String(score === null ? '-' : score);
+  const formatPlayerLine = (player, scores) => {
+    const playerLine = `${player.name}: ${scores.map(formatScore).join('-')}`;
+
+    return player.name === result.winner ? `*${playerLine}*` : playerLine;
+  };
 
   return [
     'Resultado Liga B',
     '',
-    '```',
     formatPlayerLine(
       playerA,
       result.parsedSets.map((set) => set[0])
@@ -240,9 +239,8 @@ const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
       playerB,
       result.parsedSets.map((set) => set[1])
     ),
-    '```',
     '',
-    `Ganador: ${result.winner}`,
+    `*Ganador: ${result.winner}*`,
     `🎾🎾🎾 Pelotas: ${ballProvider}`,
   ].join('\n');
 };
