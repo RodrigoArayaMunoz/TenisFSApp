@@ -176,7 +176,7 @@ export default function AdminDashboard() {
               onPress={() =>
                 router.push({
                   pathname: '/league-standings',
-                  params: { leagueId: 'B' },
+                  params: { leagueId: 'B', backTo: '/admin-dashboard' },
                 })
               }>
               <AntDesign name="trophy" size={22} color="#A66132" />
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
               onPress={() =>
                 router.push({
                   pathname: '/league-standings',
-                  params: { leagueId: 'C' },
+                  params: { leagueId: 'C', backTo: '/admin-dashboard' },
                 })
               }>
               <AntDesign name="trophy" size={22} color="#A66132" />

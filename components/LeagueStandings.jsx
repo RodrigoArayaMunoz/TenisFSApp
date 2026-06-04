@@ -19,7 +19,7 @@ import {
   isSupabaseConfigured,
 } from '../services/resultService';
 
-export default function LeagueStandings({ leagueId = 'B' }) {
+export default function LeagueStandings({ leagueId = 'B', backTo = '/login' }) {
   const [players, setPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -61,7 +61,7 @@ export default function LeagueStandings({ leagueId = 'B' }) {
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
-            onPress={() => router.replace('/login')}>
+            onPress={() => router.replace(backTo)}>
             <Feather name="arrow-left" size={22} color="#FFFFFF" />
           </Pressable>
 
