@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
-const SPLASH_DURATION_MS = 2400;
+const SPLASH_DURATION_MS = 1500;
 const TRACK_WIDTH = 220;
 
 export default function SplashScreen() {
