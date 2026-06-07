@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +17,7 @@ import {
   fetchLeagueStandings,
   isSupabaseConfigured,
 } from '../services/resultService';
+import { showUserAlert } from '../utils/alerts';
 
 export default function LeagueStandings({ leagueId = 'B', backTo = '/login' }) {
   const [players, setPlayers] = useState([]);
@@ -42,7 +42,7 @@ export default function LeagueStandings({ leagueId = 'B', backTo = '/login' }) {
         const standings = await fetchLeagueStandings(leagueId);
         setPlayers(standings);
       } catch (error) {
-        Alert.alert('No se pudo cargar la tabla', error.message);
+        showUserAlert('No se pudo cargar la tabla', error.message);
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);

@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,6 +18,7 @@ import {
   isSupabaseConfigured,
   reviewMatchResult,
 } from '../services/resultService';
+import { showUserAlert } from '../utils/alerts';
 
 const ResultCard = ({ result }) => (
   <View style={styles.resultContent}>
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
       const results = await fetchPendingMatchResults();
       setPendingResults(results);
     } catch (error) {
-      Alert.alert('No se pudieron cargar resultados', error.message);
+      showUserAlert('No se pudieron cargar resultados', error.message);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -91,13 +91,13 @@ export default function AdminDashboard() {
       setPendingResults((currentResults) =>
         currentResults.filter((result) => result.id !== resultId)
       );
-      Alert.alert(
+      showUserAlert(
         status === 'Validado'
           ? 'Resultado validado y tabla de posiciones actualizada'
           : 'Resultado rechazado y tabla de posiciones actualizada'
       );
     } catch (error) {
-      Alert.alert('No se pudo revisar', error.message);
+      showUserAlert('No se pudo revisar', error.message);
     } finally {
       setReviewingId(null);
     }

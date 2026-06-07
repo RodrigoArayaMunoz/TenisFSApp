@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   Linking,
   Modal,
   Platform,
@@ -21,6 +20,7 @@ import {
   isSupabaseConfigured,
   submitPendingMatchResult,
 } from '../services/resultService';
+import { showUserAlert } from '../utils/alerts';
 
 const LEAGUE_ID = 'B';
 
@@ -362,17 +362,17 @@ export default function RegisterResult() {
     const result = calculateMatchResult(rows);
 
     if (result.error) {
-      Alert.alert('Resultado inválido', result.error);
+      showUserAlert('Resultado invalido', result.error);
       return;
     }
 
     if (!ballProvider) {
-      Alert.alert('Faltan pelotas', 'Debe seleccionar quien puso las pelotas.');
+      showUserAlert('Faltan pelotas', 'Debe seleccionar quien puso las pelotas.');
       return;
     }
 
     if (!isSupabaseConfigured) {
-      Alert.alert(
+      showUserAlert(
         'Supabase no configurado',
         'Debe configurar EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY para guardar resultados.'
       );
@@ -383,7 +383,7 @@ export default function RegisterResult() {
     const hasMissingPlayerIds = rows.some((row) => !row.playerId);
 
     if (hasMissingPlayerIds || !ballProviderRow?.playerId) {
-      Alert.alert(
+      showUserAlert(
         'Jugadores no sincronizados',
         'Los jugadores deben existir en la tabla players de Supabase antes de enviar resultados.'
       );
@@ -433,13 +433,13 @@ export default function RegisterResult() {
       try {
         await openWhatsAppShare(whatsAppMessage);
       } catch {
-        Alert.alert(
+        showUserAlert(
           'Resultado enviado',
           'El resultado quedo Pendiente, pero no se pudo abrir WhatsApp.'
         );
       }
     } catch (error) {
-      Alert.alert('No se pudo guardar', error.message);
+      showUserAlert('No se pudo guardar', error.message);
     } finally {
       setIsSubmitting(false);
     }

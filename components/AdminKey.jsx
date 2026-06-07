@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { isSupabaseConfigured, verifyAdminKey } from '../services/adminService';
+import { showUserAlert } from '../utils/alerts';
 
 const KEY_LENGTH = 4;
 
@@ -59,12 +60,12 @@ export default function AdminKey() {
     const adminKey = digits.join('');
 
     if (adminKey.length < KEY_LENGTH) {
-      Alert.alert('Clave incompleta', 'Debe ingresar los 4 numeros de la clave.');
+      showUserAlert('Clave incompleta', 'Debe ingresar los 4 numeros de la clave.');
       return;
     }
 
     if (!isSupabaseConfigured) {
-      Alert.alert(
+      showUserAlert(
         'Supabase no configurado',
         'Agrega EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY para validar la clave.'
       );
@@ -77,14 +78,14 @@ export default function AdminKey() {
       const isValidAdmin = await verifyAdminKey(adminKey);
 
       if (!isValidAdmin) {
-        Alert.alert('Clave incorrecta', 'La clave ingresada no corresponde.');
+        showUserAlert('Clave incorrecta', 'La clave ingresada no corresponde.');
         clearKey();
         return;
       }
 
       router.push('/admin-dashboard');
     } catch (error) {
-      Alert.alert('Error de validacion', error.message);
+      showUserAlert('Error de validacion', error.message);
     } finally {
       setIsValidating(false);
     }
@@ -122,7 +123,10 @@ export default function AdminKey() {
                 keyboardType="number-pad"
                 maxLength={1}
                 selectTextOnFocus
-                style={styles.keyInput}
+                style={[
+                  styles.keyInput,
+                  Platform.OS === 'web' && styles.keyInputWeb,
+                ]}
                 textAlign="center"
                 selectionColor="#2F8A4D"
               />
@@ -214,6 +218,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 4,
+  },
+  keyInputWeb: {
+    textAlign: 'center',
+    paddingHorizontal: 0,
   },
   adminButton: {
     minHeight: 54,
