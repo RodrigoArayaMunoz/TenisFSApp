@@ -147,14 +147,6 @@ export default function Login() {
                     numberOfLines={1}>
                     Liga {league.id}
                   </Text>
-                  <Text
-                    style={[
-                      styles.leagueLeader,
-                      isCompact && styles.leagueLeaderCompact,
-                    ]}
-                    numberOfLines={1}>
-                    {`L\u00edder: ${league.leader}`}
-                  </Text>
                 </View>
               </Pressable>
             ))}
