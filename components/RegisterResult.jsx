@@ -24,6 +24,7 @@ import {
 import { showUserAlert } from '../utils/alerts';
 
 const LEAGUE_ID = 'B';
+const PLAYER_PICKER_LEAGUE_IDS = ['B', 'C'];
 const RESULT_NOTICE_DURATION = 5000;
 const RESULT_REGISTERED_MESSAGE =
   'Resultado registrado, el administrador debe validar el resultado para actualizar la tabla de posiciones.';
@@ -84,6 +85,22 @@ const FALLBACK_PLAYERS = LEAGUE_B_PLAYERS.map((name) => ({
   id: null,
   name,
 }));
+
+const mergePlayers = (leaguePlayers) => {
+  const playersByKey = new Map();
+
+  leaguePlayers.flat().forEach((player) => {
+    const playerKey = player.id ?? player.name;
+
+    if (!playersByKey.has(playerKey)) {
+      playersByKey.set(playerKey, player);
+    }
+  });
+
+  return Array.from(playersByKey.values()).sort((firstPlayer, secondPlayer) =>
+    firstPlayer.name.localeCompare(secondPlayer.name, 'es')
+  );
+};
 
 const parseScore = (value) => {
   const trimmedValue = value.trim();
@@ -325,7 +342,12 @@ export default function RegisterResult() {
       }
 
       try {
-        const players = await fetchPlayersByLeague(LEAGUE_ID);
+        const leaguePlayers = await Promise.all(
+          PLAYER_PICKER_LEAGUE_IDS.map((leagueId) =>
+            fetchPlayersByLeague(leagueId)
+          )
+        );
+        const players = mergePlayers(leaguePlayers);
 
         if (players.length > 0) {
           setAvailablePlayers(players);
