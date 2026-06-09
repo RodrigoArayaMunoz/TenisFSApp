@@ -1,14 +1,15 @@
-import { AntDesign, Feather } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+import { AntDesign, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,40 +21,137 @@ import {
 } from '../services/resultService';
 import { showUserAlert } from '../utils/alerts';
 
-const ResultCard = ({ result }) => (
-  <View style={styles.resultContent}>
-    <View style={styles.resultHeader}>
-      <Text style={styles.leagueLabel}>Liga {result.league}</Text>
-    </View>
+const isWeb = Platform.OS === 'web';
+const REVIEW_NOTICE_DURATION = 3500;
+const REVIEW_MESSAGES = {
+  Validado: 'Resultado validado, la tabla de posiciones se ha actualizado.',
+  Rechazado: 'Resultado rechazado, la tabla de posiciones se ha actualizado.',
+};
 
-    <View style={styles.playersBlock}>
-      {result.players.map((player) => (
-        <View key={player.name} style={styles.playerRow}>
-          <Text style={styles.playerName}>{player.name}</Text>
+const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
+  isWeb
+    ? { boxShadow: web }
+    : {
+        shadowColor: color,
+        shadowOffset: offset,
+        shadowOpacity: opacity,
+        shadowRadius: radius,
+        elevation,
+      };
 
-          <View style={styles.scoresRow}>
-            {player.scores.map((score, index) => (
-              <Text key={`${player.name}-${index}`} style={styles.scoreText}>
-                {score ?? ''}
-              </Text>
+const formatScores = (players) => {
+  const setCount = Math.max(...players.map((player) => player.scores.length));
+
+  return Array.from({ length: setCount })
+    .map((_, setIndex) => {
+      const playerAScore = players[0]?.scores[setIndex];
+      const playerBScore = players[1]?.scores[setIndex];
+
+      if (playerAScore === null || playerAScore === undefined) {
+        return null;
+      }
+
+      if (playerBScore === null || playerBScore === undefined) {
+        return null;
+      }
+
+      return `${playerAScore}-${playerBScore}`;
+    })
+    .filter(Boolean)
+    .join(', ');
+};
+
+const wait = (duration) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
+
+const ResultCard = ({ result, isReviewing, isCompact, isTiny, onReview }) => {
+  const [playerA, playerB] = result.players;
+  const scoreText = formatScores(result.players);
+
+  return (
+    <View style={[styles.resultCard, isCompact && styles.resultCardCompact]}>
+      <View style={styles.resultInfo}>
+        <Text
+          style={[styles.matchTitle, isCompact && styles.matchTitleCompact]}
+          numberOfLines={2}>
+          {playerA.name} vs {playerB.name}
+        </Text>
+
+        <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
+          Scores: {scoreText || 'Sin marcador'}
+        </Text>
+
+        <View style={styles.ballsLine}>
+          <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
+            Pelotas
+          </Text>
+
+          <View style={styles.ballIconsRow}>
+            {[0, 1, 2].map((ballIndex) => (
+              <MaterialCommunityIcons
+                key={`ball-${result.id}-${ballIndex}`}
+                name="tennis-ball"
+                size={isCompact ? 15 : 20}
+                color="#D6D33E"
+              />
             ))}
           </View>
-        </View>
-      ))}
-    </View>
 
-    <View style={styles.ballsRow}>
-      <Text style={styles.ballsLabel}>Pelotas</Text>
-      <Text style={styles.ballsName}>{result.ballsProvider}</Text>
+          <Text
+            style={[styles.detailText, isCompact && styles.detailTextCompact]}
+            numberOfLines={1}>
+            : {result.ballsProvider}
+          </Text>
+        </View>
+      </View>
+
+      <View
+        style={[
+          styles.actionsRow,
+          isCompact && styles.actionsRowCompact,
+          isTiny && styles.actionsRowTiny,
+        ]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.reviewAction,
+            styles.approveAction,
+            isCompact && styles.reviewActionCompact,
+            isTiny && styles.reviewActionTiny,
+            (pressed || isReviewing) && styles.actionPressed,
+          ]}
+          onPress={() => onReview(result.id, 'Validado')}
+          disabled={isReviewing}>
+          <Feather name="check" size={isTiny ? 21 : isCompact ? 25 : 34} color="#FFFFFF" />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.reviewAction,
+            styles.rejectAction,
+            isCompact && styles.reviewActionCompact,
+            isTiny && styles.reviewActionTiny,
+            (pressed || isReviewing) && styles.actionPressed,
+          ]}
+          onPress={() => onReview(result.id, 'Rechazado')}
+          disabled={isReviewing}>
+          <Feather name="x" size={isTiny ? 21 : isCompact ? 25 : 34} color="#FFFFFF" />
+        </Pressable>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 export default function AdminDashboard() {
+  const { width } = useWindowDimensions();
   const [pendingResults, setPendingResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
+  const [reviewNotice, setReviewNotice] = useState(null);
+  const isCompact = width < 520;
+  const isTiny = width < 370;
 
   const loadPendingResults = useCallback(async ({ refreshing = false } = {}) => {
     if (!isSupabaseConfigured) {
@@ -91,12 +189,14 @@ export default function AdminDashboard() {
       setPendingResults((currentResults) =>
         currentResults.filter((result) => result.id !== resultId)
       );
-      showUserAlert(
-        status === 'Validado'
-          ? 'Resultado validado y tabla de posiciones actualizada'
-          : 'Resultado rechazado y tabla de posiciones actualizada'
-      );
+      setReviewNotice({
+        message: REVIEW_MESSAGES[status],
+        type: status,
+      });
+      await wait(REVIEW_NOTICE_DURATION);
+      setReviewNotice(null);
     } catch (error) {
+      setReviewNotice(null);
       showUserAlert('No se pudo revisar', error.message);
     } finally {
       setReviewingId(null);
@@ -106,104 +206,130 @@ export default function AdminDashboard() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Bienvenido Administrador</Text>
-          <Image
-            source={require('../assets/images/logofs.png')}
-            style={styles.logo}
-            contentFit="contain"
-          />
-        </View>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, isCompact && styles.headerTitleCompact]}>
+              Bienvenido Administrador
+            </Text>
 
-        {isLoading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color="#A66132" />
+            <View style={[styles.brandMark, isCompact && styles.brandMarkCompact]}>
+              <View style={styles.brandBall}>
+                <MaterialCommunityIcons
+                  name="tennis-ball"
+                  size={isCompact ? 26 : 38}
+                  color="#FFFFFF"
+                />
+              </View>
+              <Text style={[styles.brandText, isCompact && styles.brandTextCompact]}>
+                tennis{'\n'}academy
+              </Text>
+            </View>
           </View>
-        ) : (
-          <ScrollView
-            style={styles.resultsList}
-            contentContainerStyle={styles.resultsContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={() => loadPendingResults({ refreshing: true })}
-                tintColor="#A66132"
-              />
-            }
-            showsVerticalScrollIndicator={false}>
-            {pendingResults.map((result) => (
-              <View key={result.id} style={styles.resultRow}>
-                <ResultCard result={result} />
 
-                <View style={styles.actionsColumn}>
-                  <Pressable
-                    style={[
-                      styles.actionButton,
-                      styles.validateButton,
-                      reviewingId === result.id && styles.actionButtonDisabled,
-                    ]}
-                    onPress={() => handleReview(result.id, 'Validado')}
-                    disabled={reviewingId === result.id}>
-                    <Feather name="check" size={19} color="#2F8A4D" />
-                  </Pressable>
+          {isLoading ? (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color="#A66132" />
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.resultsList}
+              contentContainerStyle={styles.resultsContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={() => loadPendingResults({ refreshing: true })}
+                  tintColor="#A66132"
+                />
+              }
+              showsVerticalScrollIndicator={false}>
+              {pendingResults.map((result) => (
+                <ResultCard
+                  key={result.id}
+                  result={result}
+                  isCompact={isCompact}
+                  isTiny={isTiny}
+                  isReviewing={reviewingId === result.id}
+                  onReview={handleReview}
+                />
+              ))}
 
-                  <Pressable
-                    style={[
-                      styles.actionButton,
-                      styles.rejectButton,
-                      reviewingId === result.id && styles.actionButtonDisabled,
-                    ]}
-                    onPress={() => handleReview(result.id, 'Rechazado')}
-                    disabled={reviewingId === result.id}>
-                    <Feather name="x-circle" size={20} color="#D93434" />
-                  </Pressable>
+              {pendingResults.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>Sin resultados pendientes</Text>
                 </View>
-              </View>
-            ))}
+              ) : null}
+            </ScrollView>
+          )}
 
-            {pendingResults.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Sin resultados pendientes</Text>
-              </View>
-            ) : null}
-          </ScrollView>
-        )}
+          <View style={styles.footerSection}>
+            <View style={styles.tabsSection}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  isCompact && styles.tabButtonCompact,
+                  isTiny && styles.tabButtonTiny,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/league-standings',
+                    params: { leagueId: 'B', backTo: '/admin-dashboard' },
+                  })
+                }>
+                <AntDesign name="trophy" size={isCompact ? 28 : 34} color="#000000" />
+                <Text style={[styles.tabButtonText, isCompact && styles.tabButtonTextCompact]}>
+                  Liga B
+                </Text>
+              </Pressable>
 
-        <View style={styles.footerSection}>
-          <View style={styles.tabsSection}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.tabButton,
+                  isCompact && styles.tabButtonCompact,
+                  isTiny && styles.tabButtonTiny,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/league-standings',
+                    params: { leagueId: 'C', backTo: '/admin-dashboard' },
+                  })
+                }>
+                <AntDesign name="trophy" size={isCompact ? 28 : 34} color="#000000" />
+                <Text style={[styles.tabButtonText, isCompact && styles.tabButtonTextCompact]}>
+                  Liga C
+                </Text>
+              </Pressable>
+            </View>
+
             <Pressable
-              style={styles.tabButton}
-              onPress={() =>
-                router.push({
-                  pathname: '/league-standings',
-                  params: { leagueId: 'B', backTo: '/admin-dashboard' },
-                })
-              }>
-              <AntDesign name="trophy" size={22} color="#A66132" />
-              <Text style={styles.tabButtonText}>Liga B</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.tabButton}
-              onPress={() =>
-                router.push({
-                  pathname: '/league-standings',
-                  params: { leagueId: 'C', backTo: '/admin-dashboard' },
-                })
-              }>
-              <AntDesign name="trophy" size={22} color="#A66132" />
-              <Text style={styles.tabButtonText}>Liga C</Text>
+              style={({ pressed }) => [
+                styles.menuButton,
+                isCompact && styles.menuButtonCompact,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() => router.replace('/login')}>
+              <Feather name="home" size={isCompact ? 28 : 36} color="#FFFFFF" />
+              <Text style={[styles.menuButtonText, isCompact && styles.menuButtonTextCompact]}>
+                Volver al menu principal
+              </Text>
             </Pressable>
           </View>
-
-          <Pressable
-            style={styles.menuButton}
-            onPress={() => router.replace('/login')}>
-            <Feather name="home" size={21} color="#FFFFFF" />
-            <Text style={styles.menuButtonText}>Volver al menu principal</Text>
-          </Pressable>
         </View>
       </View>
+
+      {reviewNotice ? (
+        <View style={styles.noticeOverlay}>
+          <View style={styles.noticeCard}>
+            <Feather
+              name={reviewNotice.type === 'Validado' ? 'check-circle' : 'x-circle'}
+              size={26}
+              color={reviewNotice.type === 'Validado' ? '#05B743' : '#E63F42'}
+            />
+            <Text style={styles.noticeText}>{reviewNotice.message}</Text>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -211,31 +337,79 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F3EE',
+    backgroundColor: '#F8F4E8',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F7F3EE',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 26,
+    backgroundColor: '#F8F4E8',
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 24,
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 760,
   },
   header: {
-    minHeight: 72,
+    minHeight: 130,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 14,
+    gap: 18,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#3A312C',
+    fontSize: 58,
+    lineHeight: 66,
+    fontWeight: '900',
+    color: '#6C3518',
   },
-  logo: {
-    width: 62,
-    height: 62,
+  headerTitleCompact: {
+    fontSize: 40,
+    lineHeight: 47,
+  },
+  brandMark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 8,
+  },
+  brandMarkCompact: {
+    gap: 6,
+    paddingTop: 6,
+  },
+  brandBall: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#7A3D1C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontSize: 22,
+    lineHeight: 22,
+    fontWeight: '900',
+    color: '#6C3518',
+  },
+  brandTextCompact: {
+    display: 'none',
+  },
+  sectionTitle: {
+    fontSize: 38,
+    lineHeight: 44,
+    fontWeight: '900',
+    color: '#000000',
+    marginTop: 12,
+    marginBottom: 22,
+  },
+  sectionTitleCompact: {
+    fontSize: 27,
+    lineHeight: 32,
+    marginTop: 4,
+    marginBottom: 14,
   },
   loadingState: {
     flex: 1,
@@ -244,177 +418,252 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     flex: 1,
-    marginTop: 18,
-    marginBottom: 18,
   },
   resultsContent: {
-    gap: 8,
-    paddingBottom: 4,
+    gap: 18,
+    paddingBottom: 20,
   },
-  resultRow: {
+  resultCard: {
+    minHeight: 126,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
+    paddingVertical: 18,
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
+    gap: 16,
+    ...buildShadow({
+      color: '#5E4A38',
+      offset: { width: 0, height: 8 },
+      opacity: 0.18,
+      radius: 14,
+      elevation: 7,
+      web: '0px 8px 14px rgba(94, 74, 56, 0.18)',
+    }),
+  },
+  resultCardCompact: {
+    minHeight: 112,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     gap: 10,
   },
-  actionsColumn: {
-    width: 34,
+  resultInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  matchTitle: {
+    fontSize: 23,
+    lineHeight: 29,
+    fontWeight: '900',
+    color: '#000000',
+    marginBottom: 8,
+  },
+  matchTitleCompact: {
+    fontSize: 16,
+    lineHeight: 20,
+    marginBottom: 5,
+  },
+  detailText: {
+    fontSize: 21,
+    lineHeight: 27,
+    color: '#000000',
+  },
+  detailTextCompact: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  ballsLine: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  ballIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: 6,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+  },
+  actionsRowCompact: {
     gap: 8,
   },
-  actionButton: {
-    width: 31,
-    height: 31,
-    borderRadius: 15.5,
+  actionsRowTiny: {
+    gap: 7,
+  },
+  reviewAction: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.2,
-    shadowColor: '#9F6A3F',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
+    ...buildShadow({
+      color: '#000000',
+      offset: { width: 0, height: 5 },
+      opacity: 0.18,
+      radius: 8,
+      elevation: 5,
+      web: '0px 5px 8px rgba(0, 0, 0, 0.18)',
+    }),
   },
-  actionButtonDisabled: {
-    opacity: 0.5,
+  reviewActionCompact: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
-  validateButton: {
-    borderColor: '#B8DDBF',
+  reviewActionTiny: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
-  rejectButton: {
-    borderColor: '#F0B9B9',
+  approveAction: {
+    backgroundColor: '#45BE5B',
   },
-  resultContent: {
-    flex: 1,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E4D9CF',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    shadowColor: '#9F6A3F',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
+  rejectAction: {
+    backgroundColor: '#E63F42',
   },
-  resultHeader: {
-    marginBottom: 4,
-  },
-  leagueLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#A66132',
-  },
-  playersBlock: {
-    gap: 4,
-  },
-  playerRow: {
-    minHeight: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  playerName: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#2C2A28',
-  },
-  scoresRow: {
-    width: 74,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  scoreText: {
-    minWidth: 18,
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#111111',
-  },
-  ballsRow: {
-    minHeight: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EFE6DD',
-    marginTop: 6,
-    paddingTop: 6,
-  },
-  ballsLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#4A3C32',
-  },
-  ballsName: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4A3C32',
+  actionPressed: {
+    opacity: 0.62,
   },
   emptyState: {
-    minHeight: 160,
+    minHeight: 190,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
+    ...buildShadow({
+      color: '#5E4A38',
+      offset: { width: 0, height: 8 },
+      opacity: 0.1,
+      radius: 14,
+      elevation: 5,
+      web: '0px 8px 14px rgba(94, 74, 56, 0.1)',
+    }),
   },
   emptyText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#8C7B73',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#6C3518',
   },
   footerSection: {
     width: '100%',
-    gap: 10,
+    gap: 26,
+    paddingTop: 18,
   },
   tabsSection: {
     width: '100%',
     flexDirection: 'row',
-    gap: 14,
+    gap: 26,
   },
   tabButton: {
     flex: 1,
-    minHeight: 62,
-    borderRadius: 18,
+    minHeight: 94,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.4,
-    borderColor: '#E1D4C8',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 14,
+    ...buildShadow({
+      color: '#5E4A38',
+      offset: { width: 0, height: 8 },
+      opacity: 0.16,
+      radius: 14,
+      elevation: 6,
+      web: '0px 8px 14px rgba(94, 74, 56, 0.16)',
+    }),
+  },
+  tabButtonCompact: {
+    minHeight: 70,
+    borderRadius: 20,
     gap: 10,
-    shadowColor: '#9F6A3F',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
+  },
+  tabButtonTiny: {
+    minHeight: 62,
+    gap: 8,
   },
   tabButtonText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#8C7B73',
+    fontSize: 32,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  tabButtonTextCompact: {
+    fontSize: 22,
   },
   menuButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    backgroundColor: '#A66132',
+    minHeight: 92,
+    borderRadius: 24,
+    backgroundColor: '#7A3D1C',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 10,
-    shadowColor: '#A66132',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 6,
+    gap: 16,
     width: '100%',
+    paddingHorizontal: 18,
+    ...buildShadow({
+      color: '#7A3D1C',
+      offset: { width: 0, height: 10 },
+      opacity: 0.2,
+      radius: 18,
+      elevation: 7,
+      web: '0px 10px 18px rgba(122, 61, 28, 0.2)',
+    }),
+  },
+  menuButtonCompact: {
+    minHeight: 68,
+    borderRadius: 20,
+    gap: 12,
   },
   menuButtonText: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '500',
     color: '#FFFFFF',
+  },
+  menuButtonTextCompact: {
+    fontSize: 19,
+  },
+  buttonPressed: {
+    opacity: 0.82,
+  },
+  noticeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(48, 48, 48, 0.52)',
+    pointerEvents: 'none',
+  },
+  noticeCard: {
+    width: '100%',
+    maxWidth: 460,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#DDEDDD',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...buildShadow({
+      color: '#2F8A4D',
+      offset: { width: 0, height: 16 },
+      opacity: 0.18,
+      radius: 24,
+      elevation: 10,
+      web: '0px 16px 24px rgba(47, 138, 77, 0.18)',
+    }),
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#3B170F',
   },
 });
