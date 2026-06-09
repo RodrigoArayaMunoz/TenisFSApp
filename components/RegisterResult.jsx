@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +24,21 @@ import {
 import { showUserAlert } from '../utils/alerts';
 
 const LEAGUE_ID = 'B';
+const RESULT_NOTICE_DURATION = 5000;
+const RESULT_REGISTERED_MESSAGE =
+  'Resultado registrado, el administrador debe validar el resultado para actualizar la tabla de posiciones.';
+const isWeb = Platform.OS === 'web';
+
+const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
+  isWeb
+    ? { boxShadow: web }
+    : {
+        shadowColor: color,
+        shadowOffset: offset,
+        shadowOpacity: opacity,
+        shadowRadius: radius,
+        elevation,
+      };
 
 const LEAGUE_B_PLAYERS = [
   'Luis Medina',
@@ -136,6 +152,22 @@ const getSuperTiebreakWinner = (playerAScore, playerBScore) => {
   return {
     winnerIndex: playerAScore > playerBScore ? 0 : 1,
   };
+};
+
+const shouldEnableSuperTiebreak = (rows) => {
+  const [playerA, playerB] = rows;
+  const parsedSets = [0, 1].map((setIndex) => [
+    parseScore(playerA.sets[setIndex]),
+    parseScore(playerB.sets[setIndex]),
+  ]);
+  const firstSetResult = getRegularSetWinner(parsedSets[0][0], parsedSets[0][1], 1);
+  const secondSetResult = getRegularSetWinner(parsedSets[1][0], parsedSets[1][1], 2);
+
+  if (firstSetResult.error || secondSetResult.error) {
+    return false;
+  }
+
+  return firstSetResult.winnerIndex !== secondSetResult.winnerIndex;
 };
 
 const calculateMatchResult = (rows) => {
@@ -265,13 +297,26 @@ const openWhatsAppShare = async (message) => {
   await Linking.openURL(webUrl);
 };
 
+const wait = (duration) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
+
 export default function RegisterResult() {
+  const { width } = useWindowDimensions();
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [ballProvider, setBallProvider] = useState('');
   const [availablePlayers, setAvailablePlayers] = useState(FALLBACK_PLAYERS);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showResultNotice, setShowResultNotice] = useState(false);
+  const isTiny = width < 360;
+  const isCompact = width < 520;
+  const logoSize = isTiny ? 88 : isCompact ? 108 : 140;
+  const scoreBoxSize = isTiny ? 38 : isCompact ? 44 : 62;
+  const whatsappIconSize = isCompact ? 30 : 38;
+  const isSuperTiebreakEnabled = shouldEnableSuperTiebreak(rows);
 
   useEffect(() => {
     const loadPlayers = async () => {
@@ -306,8 +351,12 @@ export default function RegisterResult() {
   const updateSet = (rowIndex, setIndex, value) => {
     const sanitizedValue = value.replace(/[^0-9]/g, '');
 
-    setRows((currentRows) =>
-      currentRows.map((row, index) =>
+    setRows((currentRows) => {
+      if (setIndex === 2 && !shouldEnableSuperTiebreak(currentRows)) {
+        return currentRows;
+      }
+
+      const nextRows = currentRows.map((row, index) =>
         index === rowIndex
           ? {
               ...row,
@@ -316,8 +365,19 @@ export default function RegisterResult() {
               ),
             }
           : row
-      )
-    );
+      );
+
+      if (setIndex < 2 && !shouldEnableSuperTiebreak(nextRows)) {
+        return nextRows.map((row) => ({
+          ...row,
+          sets: row.sets.map((setValue, currentSetIndex) =>
+            currentSetIndex === 2 ? '' : setValue
+          ),
+        }));
+      }
+
+      return nextRows;
+    });
   };
 
   const openPlayerPicker = (rowIndex) => {
@@ -429,6 +489,9 @@ export default function RegisterResult() {
 
       setRows(INITIAL_ROWS);
       setBallProvider('');
+      setShowResultNotice(true);
+      await wait(RESULT_NOTICE_DURATION);
+      setShowResultNotice(false);
 
       try {
         await openWhatsAppShare(whatsAppMessage);
@@ -439,6 +502,7 @@ export default function RegisterResult() {
         );
       }
     } catch (error) {
+      setShowResultNotice(false);
       showUserAlert('No se pudo guardar', error.message);
     } finally {
       setIsSubmitting(false);
@@ -454,21 +518,39 @@ export default function RegisterResult() {
         <View style={styles.logoSection}>
           <Image
             source={require('../assets/images/logofs.png')}
-            style={styles.logo}
+            style={[styles.logo, { width: logoSize, height: logoSize }]}
             contentFit="contain"
           />
         </View>
 
         <View style={styles.centerSection}>
-          <View style={styles.scoreboardCard}>
-            <Text style={styles.scoreboardTitle}>Marcador</Text>
+          <View
+            style={[
+              styles.scoreboardCard,
+              isCompact && styles.scoreboardCardCompact,
+            ]}>
+            <Text
+              style={[
+                styles.scoreboardTitle,
+                isCompact && styles.scoreboardTitleCompact,
+              ]}>
+              Marcador
+            </Text>
 
             <View style={styles.table}>
               <View style={styles.setsHeaderRow}>
                 <View style={styles.playerHeaderCell} />
-                <Text style={styles.setHeaderText}>S1</Text>
-                <Text style={styles.setHeaderText}>S2</Text>
-                <Text style={styles.setHeaderText}>S3</Text>
+                {['S1', 'S2', 'S3'].map((setLabel) => (
+                  <Text
+                    key={setLabel}
+                    style={[
+                      styles.setHeaderText,
+                      { width: scoreBoxSize },
+                      isCompact && styles.setHeaderTextCompact,
+                    ]}>
+                    {setLabel}
+                  </Text>
+                  ))}
               </View>
 
               {rows.map((row, rowIndex) => (
@@ -476,36 +558,67 @@ export default function RegisterResult() {
                   key={row.id}
                   style={[
                     styles.tableRow,
+                    isCompact && styles.tableRowCompact,
                     rowIndex === rows.length - 1 && styles.lastTableRow,
                   ]}>
                   <Pressable
-                    style={styles.playerCell}
+                    style={[
+                      styles.playerCell,
+                      isCompact && styles.playerCellCompact,
+                    ]}
                     onPress={() => openPlayerPicker(rowIndex)}>
                     <Text
                       style={[
                         styles.playerInput,
+                        isCompact && styles.playerInputCompact,
                         !row.name && styles.playerPlaceholder,
                       ]}
-                      numberOfLines={2}>
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.72}
+                      numberOfLines={1}>
                       {row.name || 'Seleccionar'}
                     </Text>
-                    <Feather name="chevron-down" size={18} color="#FFFFFF" />
+                    <Feather
+                      name="chevron-down"
+                      size={isCompact ? 18 : 24}
+                      color="#FFFFFF"
+                    />
                   </Pressable>
 
-                  {row.sets.slice(0, 3).map((setValue, setIndex) => (
-                    <View key={`${row.id}-set-${setIndex}`} style={styles.setCell}>
-                      <TextInput
-                        value={setValue}
-                        onChangeText={(value) =>
-                          updateSet(rowIndex, setIndex, value)
-                        }
-                        keyboardType="number-pad"
-                        maxLength={2}
-                        style={styles.scoreInput}
-                        selectionColor="#3B66A7"
-                      />
-                    </View>
-                  ))}
+                  {row.sets.slice(0, 3).map((setValue, setIndex) => {
+                    const isSetDisabled =
+                      setIndex === 2 && !isSuperTiebreakEnabled;
+
+                    return (
+                      <View
+                        key={`${row.id}-set-${setIndex}`}
+                        style={[
+                          styles.setCell,
+                          isSetDisabled && styles.setCellDisabled,
+                          {
+                            width: scoreBoxSize,
+                            height: scoreBoxSize,
+                            borderRadius: isCompact ? 16 : 20,
+                          },
+                        ]}>
+                        <TextInput
+                          value={setValue}
+                          onChangeText={(value) =>
+                            updateSet(rowIndex, setIndex, value)
+                          }
+                          editable={!isSetDisabled}
+                          keyboardType="number-pad"
+                          maxLength={2}
+                          style={[
+                            styles.scoreInput,
+                            isCompact && styles.scoreInputCompact,
+                            isSetDisabled && styles.scoreInputDisabled,
+                          ]}
+                          selectionColor="#B36843"
+                        />
+                      </View>
+                    );
+                  })}
                 </View>
               ))}
             </View>
@@ -523,7 +636,6 @@ export default function RegisterResult() {
                       key={`${row.id}-balls`}
                       style={[
                         styles.ballOption,
-                        isSelected && styles.ballOptionSelected,
                         isDisabled && styles.ballOptionDisabled,
                       ]}
                       onPress={() => setBallProvider(row.name)}
@@ -539,9 +651,10 @@ export default function RegisterResult() {
                       <Text
                         style={[
                           styles.ballOptionText,
+                          isCompact && styles.ballOptionTextCompact,
                           isSelected && styles.ballOptionTextSelected,
                         ]}
-                        numberOfLines={2}>
+                        numberOfLines={1}>
                         {row.name || 'Seleccione jugador'}
                       </Text>
                     </Pressable>
@@ -552,25 +665,49 @@ export default function RegisterResult() {
           </View>
 
           <Pressable
-            style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton,
+              isCompact && styles.primaryButtonCompact,
+              isSubmitting && styles.buttonDisabled,
+            ]}
             onPress={handleSubmitResult}
             disabled={isSubmitting}>
-            <Text style={styles.primaryButtonText}>
+            <Text
+              style={[
+                styles.primaryButtonText,
+                isCompact && styles.primaryButtonTextCompact,
+              ]}>
               {isSubmitting ? 'Enviando...' : 'Enviar Resultado'}
             </Text>
-            <FontAwesome name="whatsapp" size={24} color="#FFFFFF" />
+            <FontAwesome name="whatsapp" size={whatsappIconSize} color="#FFFFFF" />
           </Pressable>
         </View>
 
         <View style={styles.footerSection}>
           <Pressable
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, isCompact && styles.secondaryButtonCompact]}
             onPress={() => router.replace('/login')}>
-            <Feather name="arrow-left" size={22} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Volver a menu principal</Text>
+            <Feather name="arrow-left" size={isCompact ? 30 : 38} color="#FFFFFF" />
+            <Text
+              style={[
+                styles.primaryButtonText,
+                isCompact && styles.primaryButtonTextCompact,
+              ]}
+              numberOfLines={1}>
+              Volver a menu principal
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      {showResultNotice ? (
+        <View style={styles.noticeOverlay}>
+          <View style={styles.noticeCard}>
+            <Feather name="check-circle" size={26} color="#05B743" />
+            <Text style={styles.noticeText}>{RESULT_REGISTERED_MESSAGE}</Text>
+          </View>
+        </View>
+      ) : null}
 
       <Modal
         visible={activePickerRow !== null}
@@ -655,162 +792,200 @@ export default function RegisterResult() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F3EE',
+    backgroundColor: '#F8F4EF',
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#F7F3EE',
-    paddingHorizontal: 24,
+    backgroundColor: '#F8F4EF',
+    paddingHorizontal: 18,
     paddingTop: 0,
-    paddingBottom: 26,
+    paddingBottom: 18,
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   logoSection: {
-    flex: 0.8,
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 0,
-    paddingBottom: 10,
+    justifyContent: 'center',
+    paddingTop: 10,
+    paddingBottom: 16,
   },
   logo: {
     width: 170,
     height: 170,
   },
   centerSection: {
-    flex: 1.2,
     width: '100%',
+    maxWidth: 640,
     justifyContent: 'center',
-    marginBottom: 54,
+    alignItems: 'center',
   },
   scoreboardCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 26,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 24,
+    ...buildShadow({
+      color: '#9F6A3F',
+      offset: { width: 0, height: 18 },
+      opacity: 0.12,
+      radius: 30,
+      elevation: 10,
+      web: '0px 18px 30px rgba(159, 106, 63, 0.12)',
+    }),
+  },
+  scoreboardCardCompact: {
+    borderRadius: 24,
     paddingHorizontal: 14,
-    paddingVertical: 16,
-    shadowColor: '#9F6A3F',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.13,
-    shadowRadius: 24,
-    elevation: 10,
+    paddingTop: 20,
+    paddingBottom: 18,
   },
   scoreboardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8C7B73',
-    marginBottom: 12,
-    letterSpacing: 0.3,
+    fontSize: 44,
+    lineHeight: 50,
+    fontWeight: '900',
+    color: '#3B170F',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  scoreboardTitleCompact: {
+    fontSize: 30,
+    lineHeight: 36,
+    marginBottom: 14,
   },
   table: {
     width: '100%',
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#DDE4EF',
   },
   setsHeaderRow: {
-    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F6F8FB',
+    gap: 9,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#DDE4EF',
+    borderBottomColor: '#D4CDC7',
   },
   playerHeaderCell: {
-    flex: 2.25,
-    borderRightWidth: 4,
-    borderRightColor: '#D8E445',
+    flex: 1,
+    minWidth: 0,
   },
   setHeaderText: {
-    flex: 0.52,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#6E7890',
+    color: '#8C8A88',
+  },
+  setHeaderTextCompact: {
+    fontSize: 17,
   },
   tableRow: {
     flexDirection: 'row',
-    minHeight: 58,
-    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    gap: 9,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#DDE4EF',
+    borderBottomColor: '#D4CDC7',
+  },
+  tableRowCompact: {
+    gap: 7,
+    paddingVertical: 9,
   },
   lastTableRow: {
-    borderBottomWidth: 0,
+    borderBottomWidth: 1,
   },
   playerCell: {
-    flex: 2.25,
-    backgroundColor: '#355F9F',
-    paddingHorizontal: 8,
+    flex: 1,
+    minHeight: 56,
+    minWidth: 0,
+    backgroundColor: '#2384D9',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     justifyContent: 'space-between',
     alignItems: 'center',
     flexDirection: 'row',
-    borderRightWidth: 4,
-    borderRightColor: '#D8E445',
+    gap: 10,
+    ...buildShadow({
+      color: '#2384D9',
+      offset: { width: 0, height: 8 },
+      opacity: 0.14,
+      radius: 16,
+      elevation: 5,
+      web: '0px 8px 16px rgba(35, 132, 217, 0.14)',
+    }),
+  },
+  playerCellCompact: {
+    minHeight: 44,
+    borderRadius: 12,
+    paddingHorizontal: 8,
   },
   playerInput: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     paddingVertical: 0,
     flex: 1,
-    marginRight: 6,
+  },
+  playerInputCompact: {
+    fontSize: 12,
   },
   playerPlaceholder: {
     color: '#D9E1F4',
   },
   setCell: {
-    flex: 0.52,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FCFCFD',
-    borderRightWidth: 1,
-    borderRightColor: '#E7ECF4',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2.5,
+    borderColor: '#B36843',
+  },
+  setCellDisabled: {
+    backgroundColor: '#F2ECE7',
+    borderColor: '#D6C9BE',
   },
   scoreInput: {
     width: '100%',
+    height: '100%',
     textAlign: 'center',
-    color: '#141414',
-    fontSize: 18,
-    fontWeight: '500',
+    color: '#3B170F',
+    fontSize: 24,
+    fontWeight: '900',
     paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  scoreInputCompact: {
+    fontSize: 18,
+  },
+  scoreInputDisabled: {
+    color: '#B9ACA2',
   },
   ballsSection: {
-    marginTop: 12,
+    marginTop: 18,
   },
   ballsTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#6E5C51',
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#3B170F',
+    marginBottom: 10,
   },
   ballsOptions: {
     gap: 8,
   },
   ballOption: {
-    minHeight: 38,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E4D9CF',
-    paddingHorizontal: 10,
+    minHeight: 34,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-  },
-  ballOptionSelected: {
-    borderColor: '#A66132',
-    backgroundColor: '#F8EEE6',
+    gap: 10,
   },
   ballOptionDisabled: {
     opacity: 0.45,
   },
   radioOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: '#BDAA9A',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2.5,
+    borderColor: '#B36843',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -818,61 +993,122 @@ const styles = StyleSheet.create({
     borderColor: '#A66132',
   },
   radioInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#A66132',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#B36843',
   },
   ballOptionText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6E5C51',
+    fontSize: 21,
+    color: '#3B170F',
+  },
+  ballOptionTextCompact: {
+    fontSize: 16,
   },
   ballOptionTextSelected: {
-    color: '#8B522C',
+    color: '#3B170F',
   },
   footerSection: {
     width: '100%',
+    maxWidth: 640,
+    marginTop: 14,
   },
   primaryButton: {
-    minHeight: 60,
-    borderRadius: 18,
-    backgroundColor: '#2F8A4D',
+    minHeight: 78,
+    borderRadius: 26,
+    backgroundColor: '#05B743',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 18,
-    shadowColor: '#2F8A4D',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
     width: '100%',
-    marginTop: 30,
+    marginTop: 22,
+    ...buildShadow({
+      color: '#05B743',
+      offset: { width: 0, height: 16 },
+      opacity: 0.24,
+      radius: 24,
+      elevation: 8,
+      web: '0px 16px 24px rgba(5, 183, 67, 0.24)',
+    }),
+  },
+  primaryButtonCompact: {
+    minHeight: 64,
+    borderRadius: 22,
+    gap: 12,
+    marginTop: 18,
   },
   buttonDisabled: {
     opacity: 0.65,
   },
   secondaryButton: {
-    minHeight: 60,
-    borderRadius: 18,
-    backgroundColor: '#A66132',
+    minHeight: 70,
+    borderRadius: 26,
+    backgroundColor: '#C6673E',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 12,
-    shadowColor: '#A66132',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
+    gap: 16,
     width: '100%',
+    paddingHorizontal: 18,
+    ...buildShadow({
+      color: '#A66132',
+      offset: { width: 0, height: 14 },
+      opacity: 0.2,
+      radius: 20,
+      elevation: 8,
+      web: '0px 14px 20px rgba(166, 97, 50, 0.2)',
+    }),
+  },
+  secondaryButtonCompact: {
+    minHeight: 58,
+    borderRadius: 22,
+    gap: 12,
   },
   primaryButtonText: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#FFFFFF',
+  },
+  primaryButtonTextCompact: {
+    fontSize: 18,
+  },
+  noticeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(48, 48, 48, 0.52)',
+    pointerEvents: 'none',
+  },
+  noticeCard: {
+    width: '100%',
+    maxWidth: 460,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#DDEDDD',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...buildShadow({
+      color: '#2F8A4D',
+      offset: { width: 0, height: 16 },
+      opacity: 0.18,
+      radius: 24,
+      elevation: 10,
+      web: '0px 16px 24px rgba(47, 138, 77, 0.18)',
+    }),
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#3B170F',
   },
   modalOverlay: {
     flex: 1,
@@ -890,11 +1126,14 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 14,
     maxHeight: '72%',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.16,
-    shadowRadius: 30,
-    elevation: 14,
+    ...buildShadow({
+      color: '#000000',
+      offset: { width: 0, height: 18 },
+      opacity: 0.16,
+      radius: 30,
+      elevation: 14,
+      web: '0px 18px 30px rgba(0, 0, 0, 0.16)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',

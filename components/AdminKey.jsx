@@ -17,9 +17,22 @@ import { isSupabaseConfigured, verifyAdminKey } from '../services/adminService';
 import { showUserAlert } from '../utils/alerts';
 
 const KEY_LENGTH = 4;
+const isWeb = Platform.OS === 'web';
+
+const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
+  isWeb
+    ? { boxShadow: web }
+    : {
+        shadowColor: color,
+        shadowOffset: offset,
+        shadowOpacity: opacity,
+        shadowRadius: radius,
+        elevation,
+      };
 
 export default function AdminKey() {
   const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const inputRefs = useRef([]);
 
@@ -93,6 +106,17 @@ export default function AdminKey() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View style={styles.courtBackground}>
+        <View style={[styles.courtLine, styles.netLine]} />
+        <View style={[styles.courtLine, styles.topBaseline]} />
+        <View style={[styles.courtLine, styles.middleBaseline]} />
+        <View style={[styles.courtLine, styles.bottomBaseline]} />
+        <View style={[styles.courtLine, styles.leftSideline]} />
+        <View style={[styles.courtLine, styles.centerSideline]} />
+        <View style={[styles.courtLine, styles.rightSideline]} />
+        <View style={styles.netMesh} />
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
@@ -106,7 +130,7 @@ export default function AdminKey() {
         </View>
 
         <View style={styles.centerSection}>
-          <Text style={styles.title}>Digite clave numerica</Text>
+          <Text style={styles.title}>Ingrese su PIN de Administrador</Text>
 
           <View style={styles.keyRow}>
             {digits.map((digit, index) => (
@@ -115,16 +139,18 @@ export default function AdminKey() {
                 ref={(input) => {
                   inputRefs.current[index] = input;
                 }}
-                value={digit}
+                value={digit ? '*' : ''}
                 onChangeText={(value) => updateDigit(index, value)}
                 onKeyPress={({ nativeEvent }) =>
                   handleKeyPress(index, nativeEvent.key)
                 }
+                onFocus={() => setFocusedIndex(index)}
                 keyboardType="number-pad"
                 maxLength={1}
                 selectTextOnFocus
                 style={[
                   styles.keyInput,
+                  focusedIndex === index && styles.keyInputActive,
                   Platform.OS === 'web' && styles.keyInputWeb,
                 ]}
                 textAlign="center"
@@ -160,116 +186,213 @@ export default function AdminKey() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F3EE',
+    backgroundColor: '#F8F4EF',
+  },
+  courtBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F8F4EF',
+    overflow: 'hidden',
+    pointerEvents: 'none',
+  },
+  courtLine: {
+    position: 'absolute',
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    borderRadius: 99,
+    ...buildShadow({
+      color: '#FFFFFF',
+      offset: { width: 0, height: 0 },
+      opacity: 0.55,
+      radius: 8,
+      elevation: 0,
+      web: '0px 0px 8px rgba(255, 255, 255, 0.55)',
+    }),
+  },
+  netLine: {
+    top: '26%',
+    left: '-18%',
+    width: '138%',
+    height: 1,
+    backgroundColor: 'rgba(162, 123, 92, 0.1)',
+    transform: [{ rotate: '-7deg' }],
+  },
+  topBaseline: {
+    top: '36%',
+    left: '-10%',
+    width: '126%',
+    transform: [{ rotate: '-7deg' }],
+  },
+  middleBaseline: {
+    top: '67%',
+    left: '-8%',
+    width: '124%',
+    transform: [{ rotate: '14deg' }],
+  },
+  bottomBaseline: {
+    bottom: '13%',
+    left: '-20%',
+    width: '142%',
+    transform: [{ rotate: '-17deg' }],
+  },
+  leftSideline: {
+    top: '33%',
+    left: '10%',
+    width: '86%',
+    transform: [{ rotate: '63deg' }],
+  },
+  centerSideline: {
+    top: '51%',
+    left: '31%',
+    width: '88%',
+    transform: [{ rotate: '63deg' }],
+  },
+  rightSideline: {
+    top: '43%',
+    right: '-28%',
+    width: '98%',
+    transform: [{ rotate: '63deg' }],
+  },
+  netMesh: {
+    position: 'absolute',
+    top: '25%',
+    left: '-14%',
+    width: '132%',
+    height: 122,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(136, 119, 106, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    transform: [{ rotate: '-7deg' }],
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#F7F3EE',
     paddingHorizontal: 24,
-    paddingTop: 18,
-    paddingBottom: 26,
+    paddingTop: 12,
+    paddingBottom: 24,
     justifyContent: 'space-between',
   },
   logoSection: {
-    flex: 1,
+    flex: 0.95,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 16,
-    paddingBottom: 22,
+    paddingTop: 18,
+    paddingBottom: 16,
   },
   logo: {
-    width: 170,
-    height: 170,
+    width: 230,
+    height: 230,
   },
   centerSection: {
-    flex: 1.2,
+    flex: 1.15,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     width: '100%',
-    marginBottom: 80,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#6E5C51',
-    marginBottom: 22,
+    maxWidth: 430,
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: '900',
+    color: '#3B170F',
+    marginBottom: 38,
+    textAlign: 'center',
   },
   keyRow: {
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 430,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 16,
   },
   keyInput: {
     flex: 1,
-    maxWidth: 66,
-    height: 70,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#D6C8BA',
-    color: '#2F3A31',
-    fontSize: 30,
-    fontWeight: '800',
-    shadowColor: '#9F6A3F',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
+    maxWidth: 78,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderWidth: 2,
+    borderColor: '#D8CEC4',
+    color: '#3B170F',
+    fontSize: 34,
+    fontWeight: '900',
+    ...buildShadow({
+      color: '#9F6A3F',
+      offset: { width: 0, height: 10 },
+      opacity: 0.08,
+      radius: 18,
+      elevation: 4,
+      web: '0px 10px 18px rgba(159, 106, 63, 0.08)',
+    }),
+  },
+  keyInputActive: {
+    borderColor: '#10A842',
+    ...buildShadow({
+      color: '#11B74B',
+      offset: { width: 0, height: 12 },
+      opacity: 0.3,
+      radius: 18,
+      elevation: 8,
+      web: '0px 12px 18px rgba(17, 183, 75, 0.3)',
+    }),
   },
   keyInputWeb: {
     textAlign: 'center',
     paddingHorizontal: 0,
   },
   adminButton: {
-    minHeight: 54,
-    borderRadius: 18,
-    backgroundColor: '#2F8A4D',
+    minHeight: 70,
+    borderRadius: 22,
+    backgroundColor: '#05B743',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 12,
     paddingHorizontal: 18,
-    marginTop: 28,
-    shadowColor: '#2F8A4D',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: 6,
+    marginTop: 30,
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 430,
+    ...buildShadow({
+      color: '#05B743',
+      offset: { width: 0, height: 14 },
+      opacity: 0.25,
+      radius: 20,
+      elevation: 6,
+      web: '0px 14px 20px rgba(5, 183, 67, 0.25)',
+    }),
   },
   buttonDisabled: {
     opacity: 0.65,
   },
   adminButtonText: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 25,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   footerSection: {
     width: '100%',
   },
   secondaryButton: {
-    minHeight: 60,
-    borderRadius: 18,
-    backgroundColor: '#A66132',
+    minHeight: 74,
+    borderRadius: 22,
+    backgroundColor: '#B96C32',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 12,
-    shadowColor: '#A66132',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
+    gap: 14,
     width: '100%',
+    ...buildShadow({
+      color: '#A66132',
+      offset: { width: 0, height: 14 },
+      opacity: 0.2,
+      radius: 20,
+      elevation: 8,
+      web: '0px 14px 20px rgba(166, 97, 50, 0.2)',
+    }),
   },
   secondaryButtonText: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
 });
