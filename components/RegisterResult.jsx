@@ -687,14 +687,14 @@ export default function RegisterResult() {
           <Pressable
             style={[styles.secondaryButton, isCompact && styles.secondaryButtonCompact]}
             onPress={() => router.replace('/login')}>
-            <Feather name="arrow-left" size={isCompact ? 30 : 38} color="#FFFFFF" />
+            <Feather name="home" size={isCompact ? 28 : 36} color="#FFFFFF" />
             <Text
               style={[
                 styles.primaryButtonText,
                 isCompact && styles.primaryButtonTextCompact,
               ]}
               numberOfLines={1}>
-              Volver a menu principal
+              Volver al menu principal
             </Text>
           </Pressable>
         </View>
@@ -1043,9 +1043,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   secondaryButton: {
-    minHeight: 70,
-    borderRadius: 26,
-    backgroundColor: '#C6673E',
+    minHeight: 92,
+    borderRadius: 24,
+    backgroundColor: '#7A3D1C',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -1053,17 +1053,17 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 18,
     ...buildShadow({
-      color: '#A66132',
-      offset: { width: 0, height: 14 },
+      color: '#7A3D1C',
+      offset: { width: 0, height: 10 },
       opacity: 0.2,
-      radius: 20,
-      elevation: 8,
-      web: '0px 14px 20px rgba(166, 97, 50, 0.2)',
+      radius: 18,
+      elevation: 7,
+      web: '0px 10px 18px rgba(122, 61, 28, 0.2)',
     }),
   },
   secondaryButtonCompact: {
-    minHeight: 58,
-    borderRadius: 22,
+    minHeight: 68,
+    borderRadius: 20,
     gap: 12,
   },
   primaryButtonText: {

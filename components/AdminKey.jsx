@@ -174,8 +174,8 @@ export default function AdminKey() {
           <Pressable
             style={styles.secondaryButton}
             onPress={() => router.replace('/login')}>
-            <Feather name="arrow-left" size={22} color="#FFFFFF" />
-            <Text style={styles.secondaryButtonText}>Volver</Text>
+            <Feather name="home" size={26} color="#FFFFFF" />
+            <Text style={styles.secondaryButtonText}>Volver al menu principal</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -373,26 +373,27 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   secondaryButton: {
-    minHeight: 74,
-    borderRadius: 22,
-    backgroundColor: '#B96C32',
+    minHeight: 66,
+    borderRadius: 20,
+    backgroundColor: '#7A3D1C',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 14,
+    gap: 12,
     width: '100%',
+    paddingHorizontal: 18,
     ...buildShadow({
-      color: '#A66132',
-      offset: { width: 0, height: 14 },
+      color: '#7A3D1C',
+      offset: { width: 0, height: 10 },
       opacity: 0.2,
-      radius: 20,
-      elevation: 8,
-      web: '0px 14px 20px rgba(166, 97, 50, 0.2)',
+      radius: 18,
+      elevation: 7,
+      web: '0px 10px 18px rgba(122, 61, 28, 0.2)',
     }),
   },
   secondaryButtonText: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '500',
     color: '#FFFFFF',
   },
 });

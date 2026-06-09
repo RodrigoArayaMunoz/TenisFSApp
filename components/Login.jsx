@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   adminButton: {
     minHeight: 76,
     borderRadius: 24,
-    backgroundColor: '#06783E',
+    backgroundColor: '#05B743',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
