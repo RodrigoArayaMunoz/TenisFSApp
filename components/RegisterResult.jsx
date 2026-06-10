@@ -278,7 +278,6 @@ const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
   };
 
   return [
-    '',
     formatPlayerLine(
       playerA,
       result.parsedSets.map((set) => set[0])
