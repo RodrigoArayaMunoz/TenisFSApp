@@ -278,7 +278,6 @@ const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
   };
 
   return [
-    'Resultado Liga B',
     '',
     formatPlayerLine(
       playerA,
