@@ -84,7 +84,7 @@ export const submitPendingMatchResult = async (matchResult) =>
 export const fetchPendingMatchResults = async () => {
   const params = new URLSearchParams({
     select:
-      'id,league_id,set_1_player_a,set_1_player_b,set_2_player_a,set_2_player_b,set_3_player_a,set_3_player_b,submitted_at,status,player_a:players!match_results_player_a_id_fkey(name),player_b:players!match_results_player_b_id_fkey(name),ball_provider:players!match_results_ball_provider_id_fkey(name)',
+      'id,league_id,set_1_player_a,set_1_player_b,set_2_player_a,set_2_player_b,set_3_player_a,set_3_player_b,submitted_at,status,player_a:players!match_results_player_a_id_fkey(name),player_b:players!match_results_player_b_id_fkey(name),winner:players!match_results_winner_id_fkey(name),ball_provider:players!match_results_ball_provider_id_fkey(name)',
     status: 'eq.Pendiente',
     order: 'submitted_at.asc',
   });
@@ -112,6 +112,7 @@ export const fetchPendingMatchResults = async () => {
         ],
       },
     ],
+    winnerName: result.winner?.name ?? 'Sin registro',
     ballsProvider: result.ball_provider?.name ?? 'Sin registro',
   }));
 };

@@ -79,9 +79,29 @@ const ResultCard = ({ result, isReviewing, isCompact, isTiny, onReview }) => {
           {playerA.name} vs {playerB.name}
         </Text>
 
-        <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
-          Scores: {scoreText || 'Sin marcador'}
-        </Text>
+        <View style={styles.detailLine}>
+          <Text style={[styles.winnerText, isCompact && styles.detailTextCompact]}>
+            Ganador
+          </Text>
+          <AntDesign name="trophy" size={isCompact ? 15 : 20} color="#C9952D" />
+          <Text style={[styles.winnerText, isCompact && styles.detailTextCompact]}>
+            : {result.winnerName}
+          </Text>
+        </View>
+
+        <View style={styles.detailLine}>
+          <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
+            Scores
+          </Text>
+          <MaterialCommunityIcons
+            name="scoreboard-outline"
+            size={isCompact ? 16 : 22}
+            color="#000000"
+          />
+          <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
+            : {scoreText || 'Sin marcador'}
+          </Text>
+        </View>
 
         <View style={styles.ballsLine}>
           <Text style={[styles.detailText, isCompact && styles.detailTextCompact]}>
@@ -472,6 +492,18 @@ const styles = StyleSheet.create({
   detailTextCompact: {
     fontSize: 15,
     lineHeight: 20,
+  },
+  winnerText: {
+    fontSize: 21,
+    lineHeight: 27,
+    fontWeight: '900',
+    color: '#000000',
+  },
+  detailLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
   },
   ballsLine: {
     flexDirection: 'row',

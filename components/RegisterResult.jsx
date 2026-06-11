@@ -25,7 +25,7 @@ import { showUserAlert } from '../utils/alerts';
 
 const LEAGUE_ID = 'B';
 const PLAYER_PICKER_LEAGUE_IDS = ['B', 'C'];
-const RESULT_NOTICE_DURATION = 5000;
+const RESULT_NOTICE_DURATION = 4500;
 const RESULT_REGISTERED_MESSAGE =
   'Resultado registrado, el administrador debe validar el resultado para actualizar la tabla de posiciones.';
 const isWeb = Platform.OS === 'web';
@@ -295,10 +295,25 @@ const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
 const openWhatsAppShare = async (message) => {
   const encodedMessage = encodeURIComponent(message);
   const appUrl = `whatsapp://send?text=${encodedMessage}`;
-  const webUrl = `https://wa.me/?text=${encodedMessage}`;
+  const webUrl = `https://web.whatsapp.com/send?text=${encodedMessage}`;
 
   if (Platform.OS === 'web') {
-    await Linking.openURL(webUrl);
+    const userAgent =
+      typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isAndroidBrowser = /Android/i.test(userAgent);
+    const isIosBrowser = /iPhone|iPad|iPod/i.test(userAgent);
+
+    if (isAndroidBrowser) {
+      const fallbackUrl = encodeURIComponent(webUrl);
+      const androidIntentUrl =
+        `intent://send?text=${encodedMessage}` +
+        `#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${fallbackUrl};end`;
+
+      window.location.href = androidIntentUrl;
+      return;
+    }
+
+    window.location.href = isIosBrowser ? appUrl : webUrl;
     return;
   }
 
