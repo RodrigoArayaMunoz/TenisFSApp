@@ -55,7 +55,7 @@ const requestSupabase = async (path, options = {}) => {
 
 export const fetchPlayersByLeague = async (leagueId) => {
   const params = new URLSearchParams({
-    select: 'id,name',
+    select: 'id,name,league_id',
     league_id: `eq.${leagueId}`,
     active: 'eq.true',
     order: 'name.asc',

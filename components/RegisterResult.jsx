@@ -23,7 +23,7 @@ import {
 } from '../services/resultService';
 import { showUserAlert } from '../utils/alerts';
 
-const LEAGUE_ID = 'B';
+const DEFAULT_LEAGUE_ID = 'B';
 const PLAYER_PICKER_LEAGUE_IDS = ['B', 'C'];
 const RESULT_NOTICE_DURATION = 4500;
 const RESULT_REGISTERED_MESSAGE =
@@ -70,12 +70,14 @@ const INITIAL_ROWS = [
   {
     id: 'playerA',
     playerId: null,
+    leagueId: null,
     name: '',
     sets: ['', '', ''],
   },
   {
     id: 'playerB',
     playerId: null,
+    leagueId: null,
     name: '',
     sets: ['', '', ''],
   },
@@ -83,17 +85,27 @@ const INITIAL_ROWS = [
 
 const FALLBACK_PLAYERS = LEAGUE_B_PLAYERS.map((name) => ({
   id: null,
+  leagueId: DEFAULT_LEAGUE_ID,
   name,
 }));
+
+const normalizePlayer = (player, fallbackLeagueId = null) => ({
+  id: player.id ?? null,
+  leagueId: player.leagueId ?? player.league_id ?? fallbackLeagueId,
+  name: player.name,
+});
 
 const mergePlayers = (leaguePlayers) => {
   const playersByKey = new Map();
 
   leaguePlayers.flat().forEach((player) => {
-    const playerKey = player.id ?? player.name;
+    const normalizedPlayer = normalizePlayer(player);
+    const playerKey =
+      normalizedPlayer.id ??
+      `${normalizedPlayer.leagueId ?? 'sin-liga'}-${normalizedPlayer.name}`;
 
     if (!playersByKey.has(playerKey)) {
-      playersByKey.set(playerKey, player);
+      playersByKey.set(playerKey, normalizedPlayer);
     }
   });
 
@@ -199,6 +211,17 @@ const calculateMatchResult = (rows) => {
   if (playerA.name === playerB.name) {
     return {
       error: 'Los jugadores no pueden ser iguales.',
+    };
+  }
+
+  if (
+    playerA.leagueId &&
+    playerB.leagueId &&
+    playerA.leagueId !== playerB.leagueId
+  ) {
+    return {
+      error:
+        'No se puede enviar el resultado. Los jugadores no pertenecen a la misma Liga',
     };
   }
 
@@ -356,8 +379,10 @@ export default function RegisterResult() {
 
       try {
         const leaguePlayers = await Promise.all(
-          PLAYER_PICKER_LEAGUE_IDS.map((leagueId) =>
-            fetchPlayersByLeague(leagueId)
+          PLAYER_PICKER_LEAGUE_IDS.map(async (leagueId) =>
+            (await fetchPlayersByLeague(leagueId)).map((player) =>
+              normalizePlayer(player, leagueId)
+            )
           )
         );
         const players = mergePlayers(leaguePlayers);
@@ -377,7 +402,12 @@ export default function RegisterResult() {
     setRows((currentRows) =>
       currentRows.map((row, index) =>
         index === rowIndex
-          ? { ...row, playerId: player.id, name: player.name }
+          ? {
+              ...row,
+              playerId: player.id,
+              leagueId: player.leagueId,
+              name: player.name,
+            }
           : row
       )
     );
@@ -487,6 +517,8 @@ export default function RegisterResult() {
 
     const winnerRow = rows[result.winnerIndex];
     const loserRow = rows[result.loserIndex];
+    const matchLeagueId =
+      winnerRow.leagueId ?? loserRow.leagueId ?? DEFAULT_LEAGUE_ID;
     const set3PlayerA = result.decidedBySuperTiebreak
       ? result.parsedSets[2][0]
       : null;
@@ -504,7 +536,7 @@ export default function RegisterResult() {
       });
 
       await submitPendingMatchResult({
-        league_id: LEAGUE_ID,
+        league_id: matchLeagueId,
         player_a_id: rows[0].playerId,
         player_b_id: rows[1].playerId,
         ball_provider_id: ballProviderRow.playerId,
