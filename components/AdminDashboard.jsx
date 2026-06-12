@@ -27,6 +27,7 @@ const REVIEW_MESSAGES = {
   Validado: 'Resultado validado, la tabla de posiciones se ha actualizado.',
   Rechazado: 'Resultado rechazado, la tabla de posiciones se ha actualizado.',
 };
+const TENNIS_YELLOW = '#C8D82E';
 
 const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
   isWeb
@@ -172,6 +173,9 @@ export default function AdminDashboard() {
   const [reviewNotice, setReviewNotice] = useState(null);
   const isCompact = width < 520;
   const isTiny = width < 370;
+  const shouldStackLeagues = width < 330;
+  const trophyIconSize = isCompact ? 38 : 58;
+  const trophyBallSize = isCompact ? 12 : 17;
 
   const loadPendingResults = useCallback(async ({ refreshing = false } = {}) => {
     if (!isSupabaseConfigured) {
@@ -237,12 +241,9 @@ export default function AdminDashboard() {
                 <MaterialCommunityIcons
                   name="tennis-ball"
                   size={isCompact ? 26 : 38}
-                  color="#FFFFFF"
+                  color={TENNIS_YELLOW}
                 />
               </View>
-              <Text style={[styles.brandText, isCompact && styles.brandTextCompact]}>
-                tennis{'\n'}academy
-              </Text>
             </View>
           </View>
 
@@ -282,12 +283,16 @@ export default function AdminDashboard() {
           )}
 
           <View style={styles.footerSection}>
-            <View style={styles.tabsSection}>
+            <View
+              style={[
+                styles.tabsSection,
+                shouldStackLeagues && styles.tabsSectionStacked,
+              ]}>
               <Pressable
                 style={({ pressed }) => [
-                  styles.tabButton,
-                  isCompact && styles.tabButtonCompact,
-                  isTiny && styles.tabButtonTiny,
+                  styles.leagueCard,
+                  isCompact && styles.leagueCardCompact,
+                  shouldStackLeagues && styles.leagueCardStacked,
                   pressed && styles.buttonPressed,
                 ]}
                 onPress={() =>
@@ -296,17 +301,44 @@ export default function AdminDashboard() {
                     params: { leagueId: 'B', backTo: '/admin-dashboard' },
                   })
                 }>
-                <AntDesign name="trophy" size={isCompact ? 28 : 34} color="#000000" />
-                <Text style={[styles.tabButtonText, isCompact && styles.tabButtonTextCompact]}>
-                  Liga B
-                </Text>
+                <View
+                  style={[
+                    styles.trophyWrap,
+                    isCompact && styles.trophyWrapCompact,
+                  ]}>
+                  <AntDesign
+                    name="trophy"
+                    size={trophyIconSize}
+                    color="#D8994C"
+                  />
+                  <MaterialCommunityIcons
+                    name="tennis-ball"
+                    size={trophyBallSize}
+                    color="#167143"
+                    style={[
+                      styles.trophyBall,
+                      isCompact && styles.trophyBallCompact,
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.leagueTextBlock}>
+                  <Text
+                    style={[
+                      styles.leagueTitle,
+                      isCompact && styles.leagueTitleCompact,
+                    ]}
+                    numberOfLines={1}>
+                    Liga B
+                  </Text>
+                </View>
               </Pressable>
 
               <Pressable
                 style={({ pressed }) => [
-                  styles.tabButton,
-                  isCompact && styles.tabButtonCompact,
-                  isTiny && styles.tabButtonTiny,
+                  styles.leagueCard,
+                  isCompact && styles.leagueCardCompact,
+                  shouldStackLeagues && styles.leagueCardStacked,
                   pressed && styles.buttonPressed,
                 ]}
                 onPress={() =>
@@ -315,10 +347,37 @@ export default function AdminDashboard() {
                     params: { leagueId: 'C', backTo: '/admin-dashboard' },
                   })
                 }>
-                <AntDesign name="trophy" size={isCompact ? 28 : 34} color="#000000" />
-                <Text style={[styles.tabButtonText, isCompact && styles.tabButtonTextCompact]}>
-                  Liga C
-                </Text>
+                <View
+                  style={[
+                    styles.trophyWrap,
+                    isCompact && styles.trophyWrapCompact,
+                  ]}>
+                  <AntDesign
+                    name="trophy"
+                    size={trophyIconSize}
+                    color="#D8994C"
+                  />
+                  <MaterialCommunityIcons
+                    name="tennis-ball"
+                    size={trophyBallSize}
+                    color="#167143"
+                    style={[
+                      styles.trophyBall,
+                      isCompact && styles.trophyBallCompact,
+                    ]}
+                  />
+                </View>
+
+                <View style={styles.leagueTextBlock}>
+                  <Text
+                    style={[
+                      styles.leagueTitle,
+                      isCompact && styles.leagueTitleCompact,
+                    ]}
+                    numberOfLines={1}>
+                    Liga C
+                  </Text>
+                </View>
               </Pressable>
             </View>
 
@@ -590,42 +649,79 @@ const styles = StyleSheet.create({
   tabsSection: {
     width: '100%',
     flexDirection: 'row',
-    gap: 26,
+    gap: 22,
   },
-  tabButton: {
+  tabsSectionStacked: {
+    flexDirection: 'column',
+    gap: 14,
+  },
+  leagueCard: {
     flex: 1,
-    minHeight: 94,
-    borderRadius: 24,
+    minHeight: 124,
+    minWidth: 0,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#087343',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
+    justifyContent: 'flex-start',
+    gap: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderBottomWidth: 9,
+    borderBottomColor: '#B96C32',
     ...buildShadow({
-      color: '#5E4A38',
-      offset: { width: 0, height: 8 },
+      color: '#087343',
+      offset: { width: 0, height: 16 },
       opacity: 0.16,
-      radius: 14,
-      elevation: 6,
-      web: '0px 8px 14px rgba(94, 74, 56, 0.16)',
+      radius: 24,
+      elevation: 9,
+      web: '0px 16px 24px rgba(8, 115, 67, 0.16)',
     }),
   },
-  tabButtonCompact: {
-    minHeight: 70,
-    borderRadius: 20,
-    gap: 10,
-  },
-  tabButtonTiny: {
-    minHeight: 62,
+  leagueCardCompact: {
+    minHeight: 88,
+    borderRadius: 19,
     gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderBottomWidth: 6,
   },
-  tabButtonText: {
-    fontSize: 32,
+  leagueCardStacked: {
+    width: '100%',
+  },
+  trophyWrap: {
+    width: 74,
+    height: 74,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  trophyWrapCompact: {
+    width: 46,
+    height: 46,
+  },
+  trophyBall: {
+    position: 'absolute',
+    top: 22,
+  },
+  trophyBallCompact: {
+    top: 14,
+  },
+  leagueTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  leagueTitle: {
+    fontSize: 29,
     fontWeight: '500',
-    color: '#000000',
+    color: '#1A1816',
+    marginBottom: 4,
   },
-  tabButtonTextCompact: {
-    fontSize: 22,
+  leagueTitleCompact: {
+    fontSize: 20,
+    marginBottom: 2,
   },
   menuButton: {
     minHeight: 92,

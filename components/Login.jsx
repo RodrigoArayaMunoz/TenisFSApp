@@ -29,6 +29,7 @@ const leagues = [
   { id: 'B', leader: 'Alexis Urbina' },
   { id: 'C', leader: 'Bastian Mu\u00f1oz' },
 ];
+const TENNIS_YELLOW = '#C8D82E';
 
 export default function Login() {
   const { width } = useWindowDimensions();
@@ -80,8 +81,6 @@ export default function Login() {
               pressed && styles.buttonPressed,
             ]}
             onPress={() => router.push('/register-result')}>
-            <View style={styles.resultPatternLarge} />
-            <View style={styles.resultPatternSmall} />
             <MaterialCommunityIcons
               name="tennis-ball"
               size={ballIconSize}
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
   resultButton: {
     minHeight: 156,
     borderRadius: 28,
-    backgroundColor: '#C76732',
+    backgroundColor: TENNIS_YELLOW,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -235,14 +234,14 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     borderWidth: 3,
-    borderColor: 'rgba(255, 222, 197, 0.52)',
+    borderColor: 'rgba(255, 255, 255, 0.62)',
     ...buildShadow({
-      color: '#A66132',
+      color: '#8A980A',
       offset: { width: 0, height: 20 },
       opacity: 0.24,
       radius: 28,
       elevation: 10,
-      web: '0px 20px 28px rgba(166, 97, 50, 0.24)',
+      web: '0px 20px 28px rgba(138, 152, 10, 0.24)',
     }),
   },
   resultButtonCompact: {
@@ -250,26 +249,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     gap: 12,
     paddingHorizontal: 18,
-  },
-  resultPatternLarge: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    right: -74,
-    top: -76,
-    borderRadius: 125,
-    borderWidth: 18,
-    borderColor: 'rgba(96, 42, 20, 0.18)',
-  },
-  resultPatternSmall: {
-    position: 'absolute',
-    width: 190,
-    height: 190,
-    right: -26,
-    bottom: -110,
-    borderRadius: 95,
-    borderWidth: 16,
-    borderColor: 'rgba(96, 42, 20, 0.16)',
   },
   resultButtonText: {
     fontSize: 28,
