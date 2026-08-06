@@ -42,31 +42,6 @@ const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
         elevation,
       };
 
-const LEAGUE_B_PLAYERS = [
-  'Luis Medina',
-  'Alexis Urbina',
-  'Daniel Caroca',
-  'Rodolfo Hernandez',
-  'Franco Villarroel',
-  'Marcos Villenas',
-  'Leonel Rojas',
-  'Jorge Labrin',
-  'Francisco Arias',
-  'Bryan Barra',
-  'Felipe Retamal',
-  'Fe\u00f1a Gonzalez',
-  'Ricardo Mu\u00f1oz',
-  'Jaime Maripangui',
-  'Andres Tello',
-  'Jose Valenzuela',
-  'Benjamin Mellado',
-  'Rodrigo Araya',
-  'Diego Lopez',
-  'Alvaro Villegas',
-  'Matias Espinoza',
-  'Diego Valenzuela',
-];
-
 const INITIAL_ROWS = [
   {
     id: 'playerA',
@@ -83,12 +58,6 @@ const INITIAL_ROWS = [
     sets: ['', '', ''],
   },
 ];
-
-const FALLBACK_PLAYERS = LEAGUE_B_PLAYERS.map((name) => ({
-  id: null,
-  leagueId: DEFAULT_LEAGUE_ID,
-  name,
-}));
 
 const normalizePlayer = (player, fallbackLeagueId = null) => ({
   id: player.id ?? null,
@@ -414,7 +383,7 @@ export default function RegisterResult() {
   const [activePickerRow, setActivePickerRow] = useState(null);
   const [playerSearch, setPlayerSearch] = useState('');
   const [ballProvider, setBallProvider] = useState('');
-  const [availablePlayers, setAvailablePlayers] = useState(FALLBACK_PLAYERS);
+  const [availablePlayers, setAvailablePlayers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResultNotice, setShowResultNotice] = useState(false);
   const isTiny = width < 360;
@@ -440,11 +409,9 @@ export default function RegisterResult() {
         );
         const players = mergePlayers(leaguePlayers);
 
-        if (players.length > 0) {
-          setAvailablePlayers(players);
-        }
+        setAvailablePlayers(players);
       } catch {
-        setAvailablePlayers(FALLBACK_PLAYERS);
+        setAvailablePlayers([]);
       }
     };
 
