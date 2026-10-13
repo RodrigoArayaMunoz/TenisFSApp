@@ -1,17 +1,22 @@
-import { Feather } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isSupabaseConfigured, verifyAdminKey } from '../services/adminService';
 import { showUserAlert } from '../utils/alerts';
@@ -34,9 +39,21 @@ export default function AdminKey() {
   const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
+  const [hasMounted, setHasMounted] = useState(!isWeb);
   const inputRefs = useRef([]);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const scale = hasMounted
+    ? Math.max(0.86, Math.min(width / 390, height / 750, 1.2))
+    : 1;
+  const topSpacing = hasMounted
+    ? Math.max(24, Math.min(124, height * 0.14) - insets.top)
+    : 105;
+  const logoSize = 174 * scale;
 
   useEffect(() => {
+    setHasMounted(true);
     const focusTimer = setTimeout(() => {
       inputRefs.current[0]?.focus();
     }, 250);
@@ -96,7 +113,7 @@ export default function AdminKey() {
         return;
       }
 
-      router.push('/admin-dashboard');
+      router.push('/admin-home');
     } catch (error) {
       showUserAlert('Error de validacion', error.message);
     } finally {
@@ -105,295 +122,310 @@ export default function AdminKey() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.courtBackground}>
-        <View style={[styles.courtLine, styles.netLine]} />
-        <View style={[styles.courtLine, styles.topBaseline]} />
-        <View style={[styles.courtLine, styles.middleBaseline]} />
-        <View style={[styles.courtLine, styles.bottomBaseline]} />
-        <View style={[styles.courtLine, styles.leftSideline]} />
-        <View style={[styles.courtLine, styles.centerSideline]} />
-        <View style={[styles.courtLine, styles.rightSideline]} />
-        <View style={styles.netMesh} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.logoSection}>
+    <View style={styles.screen}>
+      {isFocused && <StatusBar style="dark" />}
+      <View style={styles.frame}>
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={StyleSheet.absoluteFill}>
           <Image
-            source={require('../assets/images/logofs.png')}
-            style={styles.logo}
-            contentFit="contain"
+            source={require('../assets/images/admin-court-background.png')}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition="bottom center"
+          />
+          <LinearGradient
+            colors={[
+              'rgba(247, 243, 233, 0)',
+              'rgba(247, 243, 233, 0.76)',
+              'rgba(247, 243, 233, 0.46)',
+            ]}
+            locations={[0.55, 0.74, 1]}
+            style={StyleSheet.absoluteFill}
           />
         </View>
 
-        <View style={styles.centerSection}>
-          <Text style={styles.title}>Ingrese su PIN de Administrador</Text>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+          <KeyboardAvoidingView
+            style={styles.safeArea}
+            behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.container,
+                {
+                  paddingTop: topSpacing,
+                  paddingHorizontal: 40 * scale,
+                  paddingBottom: 24 * scale,
+                },
+              ]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              <View style={styles.content}>
+                <Image
+                  source={require('../assets/images/logofs.png')}
+                  accessibilityLabel="Academia de Tenis FS, Sexta Región"
+                  style={{ width: logoSize, height: logoSize }}
+                  contentFit="contain"
+                />
 
-          <View style={styles.keyRow}>
-            {digits.map((digit, index) => (
-              <TextInput
-                key={`admin-key-${index}`}
-                ref={(input) => {
-                  inputRefs.current[index] = input;
-                }}
-                value={digit ? '*' : ''}
-                onChangeText={(value) => updateDigit(index, value)}
-                onKeyPress={({ nativeEvent }) =>
-                  handleKeyPress(index, nativeEvent.key)
-                }
-                onFocus={() => setFocusedIndex(index)}
-                keyboardType="number-pad"
-                maxLength={1}
-                selectTextOnFocus
-                style={[
-                  styles.keyInput,
-                  focusedIndex === index && styles.keyInputActive,
-                  Platform.OS === 'web' && styles.keyInputWeb,
-                ]}
-                textAlign="center"
-                selectionColor="#2F8A4D"
-              />
-            ))}
-          </View>
+                <Text
+                  accessibilityRole="header"
+                  style={[
+                    styles.title,
+                    {
+                      fontSize: 26 * scale,
+                      lineHeight: 32 * scale,
+                      marginTop: 22 * scale,
+                    },
+                  ]}>
+                  Acceso Administrador
+                </Text>
+                <Text
+                  style={[
+                    styles.subtitle,
+                    {
+                      fontSize: 17 * scale,
+                      lineHeight: 22 * scale,
+                      marginTop: 6 * scale,
+                    },
+                  ]}>
+                  Ingrese su PIN para continuar
+                </Text>
 
-          <Pressable
-            style={[styles.adminButton, isValidating && styles.buttonDisabled]}
-            onPress={handleAdminAccess}
-            disabled={isValidating}>
-            <Feather name="check-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.adminButtonText}>
-              {isValidating ? 'Validando...' : 'Ingresar'}
-            </Text>
-          </Pressable>
-        </View>
+                <View
+                  style={[
+                    styles.keyRow,
+                    { maxWidth: 272 * scale, gap: 14 * scale, marginTop: 34 * scale },
+                  ]}>
+                  {digits.map((digit, index) => (
+                    <View
+                      key={'admin-key-' + index}
+                      style={[
+                        styles.keyBox,
+                        { height: 58 * scale, borderRadius: 15 * scale },
+                        focusedIndex === index && styles.keyBoxActive,
+                      ]}>
+                      <TextInput
+                        ref={(input) => {
+                          inputRefs.current[index] = input;
+                        }}
+                        accessibilityLabel={'Dígito ' + (index + 1) + ' del PIN'}
+                        value={digit}
+                        secureTextEntry
+                        caretHidden
+                        onChangeText={(value) => updateDigit(index, value)}
+                        onKeyPress={({ nativeEvent }) =>
+                          handleKeyPress(index, nativeEvent.key)
+                        }
+                        onFocus={() => setFocusedIndex(index)}
+                        keyboardType="number-pad"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        autoCorrect={false}
+                        spellCheck={false}
+                        editable={!isValidating}
+                        maxLength={1}
+                        selectTextOnFocus
+                        style={[
+                          StyleSheet.absoluteFill,
+                          styles.keyInput,
+                          { fontSize: 32 * scale },
+                          isWeb && styles.keyInputWeb,
+                        ]}
+                        textAlign="center"
+                        selectionColor="transparent"
+                      />
+                      {digit ? (
+                        <View
+                          pointerEvents="none"
+                          accessible={false}
+                          importantForAccessibility="no"
+                          style={[
+                            styles.pinDot,
+                            { width: 18 * scale, height: 18 * scale, borderRadius: 9 * scale },
+                          ]}
+                        />
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
 
-        <View style={styles.footerSection}>
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => router.replace('/login')}>
-            <Feather name="home" size={26} color="#FFFFFF" />
-            <Text style={styles.secondaryButtonText}>Volver al menu principal</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isValidating ? 'Validando PIN' : 'Ingresar'}
+                  style={({ pressed }) => [
+                    styles.adminButton,
+                    { borderRadius: 25 * scale, marginTop: 32 * scale },
+                    pressed && styles.buttonPressed,
+                    isValidating && styles.buttonDisabled,
+                  ]}
+                  onPress={handleAdminAccess}
+                  disabled={isValidating}>
+                  <LinearGradient
+                    colors={['#16834B', '#09633E', '#005737']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[
+                      styles.adminButtonSurface,
+                      {
+                        minHeight: 68 * scale - 2,
+                        borderRadius: 25 * scale - 1,
+                        paddingVertical: 14 * scale,
+                        gap: 16 * scale,
+                      },
+                    ]}>
+                    <MaterialCommunityIcons
+                      name="arrow-right-circle-outline"
+                      size={30 * scale}
+                      color="#F4F1DD"
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
+                    <Text style={[styles.adminButtonText, { fontSize: 20 * scale }]}>
+                      {isValidating ? 'Validando...' : 'Ingresar'}
+                    </Text>
+                  </LinearGradient>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Volver al menú principal"
+                  style={({ pressed }) => [
+                    styles.backButton,
+                    { marginTop: 24 * scale },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => router.replace('/login')}>
+                  <Text style={[styles.backButtonText, { fontSize: 16 * scale }]}>
+                    Volver al menú principal
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#EFE8D8',
+  },
+  frame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    overflow: 'hidden',
+    backgroundColor: '#F7F3E9',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F4EF',
-  },
-  courtBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F8F4EF',
-    overflow: 'hidden',
-    pointerEvents: 'none',
-  },
-  courtLine: {
-    position: 'absolute',
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.78)',
-    borderRadius: 99,
-    ...buildShadow({
-      color: '#FFFFFF',
-      offset: { width: 0, height: 0 },
-      opacity: 0.55,
-      radius: 8,
-      elevation: 0,
-      web: '0px 0px 8px rgba(255, 255, 255, 0.55)',
-    }),
-  },
-  netLine: {
-    top: '26%',
-    left: '-18%',
-    width: '138%',
-    height: 1,
-    backgroundColor: 'rgba(162, 123, 92, 0.1)',
-    transform: [{ rotate: '-7deg' }],
-  },
-  topBaseline: {
-    top: '36%',
-    left: '-10%',
-    width: '126%',
-    transform: [{ rotate: '-7deg' }],
-  },
-  middleBaseline: {
-    top: '67%',
-    left: '-8%',
-    width: '124%',
-    transform: [{ rotate: '14deg' }],
-  },
-  bottomBaseline: {
-    bottom: '13%',
-    left: '-20%',
-    width: '142%',
-    transform: [{ rotate: '-17deg' }],
-  },
-  leftSideline: {
-    top: '33%',
-    left: '10%',
-    width: '86%',
-    transform: [{ rotate: '63deg' }],
-  },
-  centerSideline: {
-    top: '51%',
-    left: '31%',
-    width: '88%',
-    transform: [{ rotate: '63deg' }],
-  },
-  rightSideline: {
-    top: '43%',
-    right: '-28%',
-    width: '98%',
-    transform: [{ rotate: '63deg' }],
-  },
-  netMesh: {
-    position: 'absolute',
-    top: '25%',
-    left: '-14%',
-    width: '132%',
-    height: 122,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(136, 119, 106, 0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    transform: [{ rotate: '-7deg' }],
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 24,
-    justifyContent: 'space-between',
-  },
-  logoSection: {
-    flex: 0.95,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 18,
-    paddingBottom: 16,
   },
-  logo: {
-    width: 230,
-    height: 230,
-  },
-  centerSection: {
-    flex: 1.15,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+  content: {
     width: '100%',
+    maxWidth: 440,
+    alignItems: 'center',
   },
   title: {
-    maxWidth: 430,
-    fontSize: 36,
-    lineHeight: 42,
-    fontWeight: '900',
+    width: '100%',
+    fontWeight: '700',
     color: '#3B170F',
-    marginBottom: 38,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: '#6B3A28',
+    fontWeight: '500',
     textAlign: 'center',
   },
   keyRow: {
     width: '100%',
-    maxWidth: 430,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    justifyContent: 'center',
   },
-  keyInput: {
+  keyBox: {
     flex: 1,
-    maxWidth: 78,
-    height: 76,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderWidth: 2,
-    borderColor: '#D8CEC4',
-    color: '#3B170F',
-    fontSize: 34,
-    fontWeight: '900',
-    ...buildShadow({
-      color: '#9F6A3F',
-      offset: { width: 0, height: 10 },
-      opacity: 0.08,
-      radius: 18,
-      elevation: 4,
-      web: '0px 10px 18px rgba(159, 106, 63, 0.08)',
-    }),
-  },
-  keyInputActive: {
-    borderColor: '#10A842',
-    ...buildShadow({
-      color: '#11B74B',
-      offset: { width: 0, height: 12 },
-      opacity: 0.3,
-      radius: 18,
-      elevation: 8,
-      web: '0px 12px 18px rgba(17, 183, 75, 0.3)',
-    }),
-  },
-  keyInputWeb: {
-    textAlign: 'center',
-    paddingHorizontal: 0,
-  },
-  adminButton: {
-    minHeight: 70,
-    borderRadius: 22,
-    backgroundColor: '#05B743',
+    minWidth: 0,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 18,
-    marginTop: 30,
-    width: '100%',
-    maxWidth: 430,
+    borderWidth: 2,
+    borderColor: '#E7DDCE',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
     ...buildShadow({
-      color: '#05B743',
-      offset: { width: 0, height: 14 },
-      opacity: 0.25,
-      radius: 20,
-      elevation: 6,
-      web: '0px 14px 20px rgba(5, 183, 67, 0.25)',
+      color: '#9F835C',
+      offset: { width: 0, height: 4 },
+      opacity: 0.1,
+      radius: 9,
+      elevation: 2,
+      web: '0px 4px 9px rgba(159, 131, 92, 0.1)',
     }),
+  },
+  keyBoxActive: {
+    borderColor: '#D8C5AA',
+  },
+  keyInput: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    color: 'transparent',
+    textAlign: 'center',
+  },
+  pinDot: {
+    backgroundColor: '#54270F',
+  },
+  keyInputWeb: {
+    outlineStyle: 'none',
+  },
+  adminButton: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.42)',
+    backgroundColor: '#09633E',
+    ...buildShadow({
+      color: '#236C40',
+      offset: { width: 0, height: 8 },
+      opacity: 0.2,
+      radius: 14,
+      elevation: 5,
+      web: '0px 8px 14px rgba(35, 108, 64, 0.2)',
+    }),
+  },
+  adminButtonSurface: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  adminButtonText: {
+    fontWeight: '600',
+    color: '#F4F1DD',
+  },
+  backButton: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    fontWeight: '500',
+    color: '#6B3623',
+    textAlign: 'center',
   },
   buttonDisabled: {
     opacity: 0.65,
   },
-  adminButtonText: {
-    fontSize: 25,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  footerSection: {
-    width: '100%',
-  },
-  secondaryButton: {
-    minHeight: 66,
-    borderRadius: 20,
-    backgroundColor: '#7A3D1C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    paddingHorizontal: 18,
-    ...buildShadow({
-      color: '#7A3D1C',
-      offset: { width: 0, height: 10 },
-      opacity: 0.2,
-      radius: 18,
-      elevation: 7,
-      web: '0px 10px 18px rgba(122, 61, 28, 0.2)',
-    }),
-  },
-  secondaryButtonText: {
-    fontSize: 20,
-    fontWeight: '500',
-    color: '#FFFFFF',
+  buttonPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.985 }],
   },
 });

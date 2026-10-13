@@ -1,6 +1,10 @@
-import { AntDesign, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { AntDesign, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -10,342 +14,303 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const isWeb = Platform.OS === 'web';
+const leagues = ['B', 'C'];
 
-const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
-  isWeb
-    ? { boxShadow: web }
-    : {
-        shadowColor: color,
-        shadowOffset: offset,
-        shadowOpacity: opacity,
-        shadowRadius: radius,
-        elevation,
-      };
-
-const leagues = [
-  { id: 'B', leader: 'Alexis Urbina' },
-  { id: 'C', leader: 'Bastian Mu\u00f1oz' },
-];
-const TENNIS_YELLOW = '#C8D82E';
-
-export default function Login() {
-  const { width } = useWindowDimensions();
-  const isCompact = width < 480;
-  const isMedium = width >= 480 && width < 720;
-  const shouldStackLeagues = width < 330;
-  const logoSize = isCompact ? 140 : isMedium ? 190 : 240;
-  const adminIconSize = isCompact ? 23 : 30;
-  const ballIconSize = isCompact ? 22 : 28;
-  const trophyIconSize = isCompact ? 38 : 58;
-  const trophyBallSize = isCompact ? 12 : 17;
+function MenuButton({
+  label,
+  icon,
+  iconColor,
+  colors,
+  onPress,
+  scale,
+  centered = false,
+  hint,
+}) {
+  const radius = 22 * scale;
+  const Icon = icon === 'trophy' ? AntDesign : MaterialCommunityIcons;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.heroSection}>
-            <Image
-              source={require('../assets/images/logofs.png')}
-              style={[styles.logo, { width: logoSize, height: logoSize }]}
-              contentFit="contain"
-            />
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.adminButton,
-                isCompact && styles.adminButtonCompact,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={() => router.push('/admin-key')}>
-              <Feather name="user" size={adminIconSize} color="#FFFFFF" />
-              <Text
-                style={[
-                  styles.adminButtonText,
-                  isCompact && styles.adminButtonTextCompact,
-                ]}
-                numberOfLines={1}>
-                Acceso Administrador
-              </Text>
-            </Pressable>
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.resultButton,
-              isCompact && styles.resultButtonCompact,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={() => router.push('/register-result')}>
-            <MaterialCommunityIcons
-              name="tennis-ball"
-              size={ballIconSize}
-              color="#FFFFFF"
-            />
-            <Text
-              style={[
-                styles.resultButtonText,
-                isCompact && styles.resultButtonTextCompact,
-              ]}
-              numberOfLines={1}>
-              Registrar Resultado
-            </Text>
-          </Pressable>
-
-          <View
-            style={[
-              styles.leaguesSection,
-              shouldStackLeagues && styles.leaguesSectionStacked,
-            ]}>
-            {leagues.map((league) => (
-              <Pressable
-                key={league.id}
-                style={({ pressed }) => [
-                  styles.leagueCard,
-                  isCompact && styles.leagueCardCompact,
-                  shouldStackLeagues && styles.leagueCardStacked,
-                  pressed && styles.buttonPressed,
-                ]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/league-standings',
-                    params: { leagueId: league.id },
-                  })
-                }>
-                <View
-                  style={[
-                    styles.trophyWrap,
-                    isCompact && styles.trophyWrapCompact,
-                  ]}>
-                  <AntDesign
-                    name="trophy"
-                    size={trophyIconSize}
-                    color="#D8994C"
-                  />
-                  <MaterialCommunityIcons
-                    name="tennis-ball"
-                    size={trophyBallSize}
-                    color="#167143"
-                    style={[
-                      styles.trophyBall,
-                      isCompact && styles.trophyBallCompact,
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.leagueTextBlock}>
-                  <Text
-                    style={[
-                      styles.leagueTitle,
-                      isCompact && styles.leagueTitleCompact,
-                    ]}
-                    numberOfLines={1}>
-                    Liga {league.id}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuButton,
+        { borderRadius: radius },
+        pressed && styles.buttonPressed,
+      ]}>
+      <LinearGradient
+        colors={colors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.buttonSurface,
+          {
+            minHeight: 66 * scale - 2,
+            borderRadius: radius - 1,
+            paddingHorizontal: 18 * scale,
+            paddingVertical: 12 * scale,
+            gap: 18 * scale,
+          },
+        ]}>
+        <View
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.iconWrap, { width: 36 * scale }]}>
+          <Icon name={icon} size={36 * scale} color={iconColor} />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        <Text
+          style={[
+            styles.buttonText,
+            { fontSize: 16 * scale },
+            centered && styles.primaryButtonText,
+          ]}>
+          {label}
+        </Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+export default function Login() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const [hasMounted, setHasMounted] = useState(Platform.OS !== 'web');
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Keep the first web render consistent with the statically exported HTML.
+  const scale = hasMounted
+    ? Math.max(0.86, Math.min(width / 333, height / 659, 1.2))
+    : 1;
+  const topSpacing = hasMounted
+    ? Math.max(14, Math.min(54, height * 0.067) - insets.top)
+    : 44;
+  const availableHeight = height - insets.top - insets.bottom;
+  const menuHeight = (66 * 5 + 10 * 4) * scale;
+  const headerTextHeight = (30 + 24) * scale + 2;
+  const reservedHeight = menuHeight + headerTextHeight + (19 + 24) * scale;
+  const logoSize = hasMounted
+    ? Math.max(
+        112 * scale,
+        Math.min(187 * scale, availableHeight - topSpacing - reservedHeight)
+      )
+    : 187;
+
+  return (
+    <View style={styles.screen}>
+      {isFocused && <StatusBar style="light" />}
+      <View style={styles.frame}>
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={StyleSheet.absoluteFill}>
+          <Image
+            source={require('../assets/images/home-court-background.png')}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            contentPosition="top center"
+          />
+          <LinearGradient
+            colors={['rgba(53, 26, 10, 0.24)', 'rgba(53, 26, 10, 0)']}
+            style={styles.heroShade}
+          />
+        </View>
+
+        <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.container,
+              {
+                paddingTop: topSpacing,
+                paddingHorizontal: 20 * scale,
+                paddingBottom: 24 * scale,
+              },
+            ]}>
+            <View style={styles.content}>
+              <View style={styles.heroSection}>
+                <Image
+                  source={require('../assets/images/logofs.png')}
+                  accessibilityLabel="Academia de Tenis FS, Sexta Región"
+                  style={{ width: logoSize, height: logoSize }}
+                  contentFit="contain"
+                />
+                <Text
+                  accessibilityRole="header"
+                  style={[
+                    styles.welcome,
+                    { fontSize: 24 * scale, lineHeight: 30 * scale },
+                  ]}>
+                  Bienvenido
+                </Text>
+                <Text
+                  style={[
+                    styles.academyName,
+                    { fontSize: 18 * scale, lineHeight: 24 * scale },
+                  ]}>
+                  Academia de Tenis FS
+                </Text>
+              </View>
+
+              <View style={[styles.menu, { gap: 10 * scale, marginTop: 19 * scale }]}>
+                <MenuButton
+                  label="Acceso Administrador"
+                  icon="shield-account-outline"
+                  iconColor="#F6EDCD"
+                  colors={['#8B582E', '#6E381E', '#542A18']}
+                  onPress={() => router.push('/admin-key')}
+                  hint="Ingresar con el PIN de administrador"
+                  scale={scale}
+                  centered
+                />
+                <MenuButton
+                  label="Registrar Resultado"
+                  icon="tennis-ball"
+                  iconColor="#F6EDCD"
+                  colors={['#277048', '#00472F', '#003F2B']}
+                  onPress={() => router.push('/register-result')}
+                  scale={scale}
+                  centered
+                />
+                <MenuButton
+                  label="Panel de Ventas"
+                  icon="cart"
+                  iconColor="#FFFFFF"
+                  colors={['#B94F20', '#A33C18', '#913416']}
+                  onPress={() => router.push('/admin-key')}
+                  hint="Ingresar al panel con el PIN de administrador"
+                  scale={scale}
+                  centered
+                />
+                {leagues.map((leagueId) => (
+                  <MenuButton
+                    key={leagueId}
+                    label={'Liga ' + leagueId}
+                    icon="trophy"
+                    iconColor="#D08022"
+                    colors={['#FFFFFF', '#FFFEFC']}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/league-standings',
+                        params: { leagueId },
+                      })
+                    }
+                    scale={scale}
+                  />
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#F7F1DF',
+  },
+  frame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    overflow: 'hidden',
+    backgroundColor: '#F7F1DF',
+  },
+  heroShade: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '48%',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F6EC',
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8F6EC',
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 34,
     alignItems: 'center',
   },
   content: {
-    flexGrow: 1,
     width: '100%',
-    maxWidth: 760,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 34,
+    maxWidth: 440,
   },
   heroSection: {
-    width: '100%',
     alignItems: 'center',
-    paddingTop: 44,
-    gap: 40,
   },
-  logo: {
-    width: 240,
-    height: 240,
-  },
-  adminButton: {
-    minHeight: 76,
-    borderRadius: 24,
-    backgroundColor: '#05B743',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 20,
-    paddingHorizontal: 22,
-    width: '100%',
-    maxWidth: 500,
-    ...buildShadow({
-      color: '#06783E',
-      offset: { width: 0, height: 18 },
-      opacity: 0.24,
-      radius: 26,
-      elevation: 8,
-      web: '0px 18px 26px rgba(6, 120, 62, 0.24)',
-    }),
-  },
-  adminButtonCompact: {
-    minHeight: 58,
-    borderRadius: 20,
-    gap: 12,
-    paddingHorizontal: 18,
-  },
-  adminButtonText: {
-    fontSize: 29,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  },
-  adminButtonTextCompact: {
-    fontSize: 20,
-  },
-  resultButton: {
-    minHeight: 156,
-    borderRadius: 28,
-    backgroundColor: TENNIS_YELLOW,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 18,
-    overflow: 'hidden',
-    paddingHorizontal: 24,
-    width: '100%',
-    maxWidth: 500,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.62)',
-    ...buildShadow({
-      color: '#8A980A',
-      offset: { width: 0, height: 20 },
-      opacity: 0.24,
-      radius: 28,
-      elevation: 10,
-      web: '0px 20px 28px rgba(138, 152, 10, 0.24)',
-    }),
-  },
-  resultButtonCompact: {
-    minHeight: 112,
-    borderRadius: 22,
-    gap: 12,
-    paddingHorizontal: 18,
-  },
-  resultButtonText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  welcome: {
+    color: '#FFF8EA',
+    fontWeight: '700',
     textAlign: 'center',
+    marginTop: 2,
+    textShadowColor: 'rgba(57, 28, 12, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  resultButtonTextCompact: {
-    fontSize: 20,
+  academyName: {
+    color: '#FFF8EA',
+    fontWeight: '600',
+    textAlign: 'center',
+    textShadowColor: 'rgba(57, 28, 12, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  leaguesSection: {
+  menu: {
     width: '100%',
-    flexDirection: 'row',
-    gap: 22,
-    justifyContent: 'center',
-    marginTop: 64,
   },
-  leaguesSectionStacked: {
-    flexDirection: 'column',
-    marginTop: 28,
-  },
-  leagueCard: {
-    flex: 1,
-    minHeight: 124,
-    minWidth: 0,
-    borderRadius: 28,
+  menuButton: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.46)',
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#087343',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 12,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderBottomWidth: 9,
-    borderBottomColor: '#B96C32',
-    ...buildShadow({
-      color: '#087343',
-      offset: { width: 0, height: 16 },
-      opacity: 0.16,
-      radius: 24,
-      elevation: 9,
-      web: '0px 16px 24px rgba(8, 115, 67, 0.16)',
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 5px 12px rgba(103, 68, 25, 0.16)',
+      },
+      default: {
+        shadowColor: '#674419',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.16,
+        shadowRadius: 10,
+        elevation: 4,
+      },
     }),
   },
-  leagueCardCompact: {
-    minHeight: 88,
-    borderRadius: 19,
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderBottomWidth: 6,
+  buttonSurface: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  leagueCardStacked: {
-    width: '100%',
-  },
-  trophyWrap: {
-    width: 74,
-    height: 74,
+  iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  trophyWrapCompact: {
-    width: 46,
-    height: 46,
-  },
-  trophyBall: {
-    position: 'absolute',
-    top: 22,
-  },
-  trophyBallCompact: {
-    top: 14,
-  },
-  leagueTextBlock: {
+  buttonText: {
     flex: 1,
-    minWidth: 0,
+    color: '#38271B',
+    fontWeight: '700',
   },
-  leagueTitle: {
-    fontSize: 29,
-    fontWeight: '500',
-    color: '#1A1816',
-    marginBottom: 4,
-  },
-  leagueTitleCompact: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
-  leagueLeader: {
-    fontSize: 15,
-    color: '#3D3732',
-  },
-  leagueLeaderCompact: {
-    fontSize: 11,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.16)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   buttonPressed: {
-    opacity: 0.84,
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
   },
 });

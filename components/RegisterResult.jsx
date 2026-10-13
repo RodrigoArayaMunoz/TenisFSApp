@@ -1,8 +1,11 @@
 import { Feather, FontAwesome } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+import { useIsFocused } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -14,7 +17,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   fetchPlayersByLeague,
@@ -377,8 +380,50 @@ const openWhatsAppShare = async (message) => {
   }
 };
 
+function FormSelector({ label, value, placeholder, onPress, disabled, scale }) {
+  return (
+    <View style={[styles.selectorRow, { gap: 10 * scale }]}>
+      <Text style={[styles.fieldLabel, { width: 84 * scale, fontSize: 16 * scale }]}>
+        {label}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={'Seleccionar ' + label.toLowerCase()}
+        accessibilityValue={{ text: value || placeholder }}
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.selector,
+          {
+            minHeight: Math.max(44, 44 * scale),
+            borderRadius: 14 * scale,
+            paddingHorizontal: 12 * scale,
+          },
+          pressed && styles.buttonPressed,
+        ]}>
+        <Text
+          style={[
+            styles.selectorText,
+            { fontSize: 14 * scale },
+            !value && styles.placeholderText,
+          ]}
+          numberOfLines={1}>
+          {value || placeholder}
+        </Text>
+        <Feather name="chevron-down" size={18 * scale} color="#838C86" />
+      </Pressable>
+    </View>
+  );
+}
+
 export default function RegisterResult() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const [hasMounted, setHasMounted] = useState(!isWeb);
+  const [selectedLeagueId, setSelectedLeagueId] = useState('');
+  const [isLeaguePickerOpen, setIsLeaguePickerOpen] = useState(false);
+  const [focusedScore, setFocusedScore] = useState(null);
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
   const [playerSearch, setPlayerSearch] = useState('');
@@ -386,14 +431,16 @@ export default function RegisterResult() {
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResultNotice, setShowResultNotice] = useState(false);
-  const isTiny = width < 360;
-  const isCompact = width < 520;
-  const logoSize = isTiny ? 88 : isCompact ? 108 : 140;
-  const scoreBoxSize = isTiny ? 38 : isCompact ? 44 : 62;
-  const whatsappIconSize = isCompact ? 30 : 38;
+  // Keep the first web render consistent with the exported HTML.
+  const scale = hasMounted
+    ? Math.max(0.86, Math.min(width / 390, height / 755, 1.2))
+    : 1;
+  const headerTopSpace = hasMounted ? Math.max(12, 66 * scale - insets.top) : 66;
+  const scoreBoxHeight = Math.max(44, 44 * scale);
   const isSuperTiebreakEnabled = shouldEnableSuperTiebreak(rows);
 
   useEffect(() => {
+    setHasMounted(true);
     const loadPlayers = async () => {
       if (!isSupabaseConfigured) {
         return;
@@ -478,6 +525,9 @@ export default function RegisterResult() {
   };
 
   const openPlayerPicker = (rowIndex) => {
+    if (!selectedLeagueId) {
+      return;
+    }
     setActivePickerRow(rowIndex);
     setPlayerSearch('');
   };
@@ -485,6 +535,21 @@ export default function RegisterResult() {
   const closePlayerPicker = () => {
     setActivePickerRow(null);
     setPlayerSearch('');
+  };
+
+  const closePicker = () => {
+    setIsLeaguePickerOpen(false);
+    closePlayerPicker();
+  };
+
+  const handleLeagueSelect = (leagueId) => {
+    if (leagueId !== selectedLeagueId) {
+      setRows(INITIAL_ROWS);
+      setBallProvider('');
+      setFocusedScore(null);
+    }
+    setSelectedLeagueId(leagueId);
+    closePicker();
   };
 
   const handlePlayerSelect = (player) => {
@@ -509,13 +574,17 @@ export default function RegisterResult() {
           .filter(Boolean);
 
   const query = playerSearch.trim().toLowerCase();
-  const filteredPlayers = !query
-    ? availablePlayers
-    : availablePlayers.filter((player) =>
-        player.name.toLowerCase().includes(query)
-      );
+  const filteredPlayers = availablePlayers.filter(
+    (player) =>
+      player.leagueId === selectedLeagueId &&
+      (!query || player.name.toLowerCase().includes(query))
+  );
 
   const handleSubmitResult = async () => {
+    if (!selectedLeagueId) {
+      showUserAlert('Seleccione una liga', 'Debe seleccionar la liga del partido.');
+      return;
+    }
     const result = calculateMatchResult(rows);
 
     if (result.error) {
@@ -607,569 +676,578 @@ export default function RegisterResult() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.logoSection}>
-          <Image
-            source={require('../assets/images/logofs.png')}
-            style={[styles.logo, { width: logoSize, height: logoSize }]}
-            contentFit="contain"
-          />
-        </View>
-
-        <View style={styles.centerSection}>
-          <View
-            style={[
-              styles.scoreboardCard,
-              isCompact && styles.scoreboardCardCompact,
-            ]}>
-            <Text
-              style={[
-                styles.scoreboardTitle,
-                isCompact && styles.scoreboardTitleCompact,
-              ]}>
-              Marcador
-            </Text>
-
-            <View style={styles.table}>
-              <View style={styles.setsHeaderRow}>
-                <View style={styles.playerHeaderCell} />
-                {['S1', 'S2', 'S3'].map((setLabel) => (
-                  <Text
-                    key={setLabel}
-                    style={[
-                      styles.setHeaderText,
-                      { width: scoreBoxSize },
-                      isCompact && styles.setHeaderTextCompact,
-                    ]}>
-                    {setLabel}
-                  </Text>
-                  ))}
+    <View style={styles.screen}>
+      {isFocused && <StatusBar style="light" />}
+      <View style={styles.frame}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <LinearGradient
+              colors={['#124F43', '#0D493B', '#1D5847']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingBottom: 32 * scale }]}>
+              <View pointerEvents="none" style={styles.headerAccent}>
+                <LinearGradient
+                  colors={['rgba(193, 187, 118, 0.3)', 'rgba(193, 187, 118, 0)']}
+                  style={StyleSheet.absoluteFill}
+                />
               </View>
-
-              {rows.map((row, rowIndex) => (
+              <SafeAreaView edges={['top', 'left', 'right']}>
                 <View
-                  key={row.id}
                   style={[
-                    styles.tableRow,
-                    isCompact && styles.tableRowCompact,
-                    rowIndex === rows.length - 1 && styles.lastTableRow,
+                    styles.headerRow,
+                    {
+                      marginTop: headerTopSpace,
+                      paddingHorizontal: 16 * scale,
+                      gap: 8 * scale,
+                      minHeight: Math.max(44, 44 * scale),
+                    },
                   ]}>
                   <Pressable
-                    style={[
-                      styles.playerCell,
-                      isCompact && styles.playerCellCompact,
-                    ]}
-                    onPress={() => openPlayerPicker(rowIndex)}>
-                    <Text
-                      style={[
-                        styles.playerInput,
-                        isCompact && styles.playerInputCompact,
-                        !row.name && styles.playerPlaceholder,
-                      ]}
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.72}
-                      numberOfLines={1}>
-                      {row.name || 'Seleccionar'}
-                    </Text>
-                    <Feather
-                      name="chevron-down"
-                      size={isCompact ? 18 : 24}
-                      color="#FFFFFF"
-                    />
+                    accessibilityRole="button"
+                    accessibilityLabel="Volver al menú principal"
+                    onPress={() => router.replace('/login')}
+                    style={({ pressed }) => [
+                      styles.backButton,
+                      { width: Math.max(44, 44 * scale), height: Math.max(44, 44 * scale) },
+                      pressed && styles.buttonPressed,
+                    ]}>
+                    <Feather name="arrow-left" size={28 * scale} color="#F6F3E4" />
                   </Pressable>
-
-                  {row.sets.slice(0, 3).map((setValue, setIndex) => {
-                    const isSetDisabled =
-                      setIndex === 2 && !isSuperTiebreakEnabled;
-
-                    return (
-                      <View
-                        key={`${row.id}-set-${setIndex}`}
-                        style={[
-                          styles.setCell,
-                          isSetDisabled && styles.setCellDisabled,
-                          {
-                            width: scoreBoxSize,
-                            height: scoreBoxSize,
-                            borderRadius: isCompact ? 16 : 20,
-                          },
-                        ]}>
-                        <TextInput
-                          value={setValue}
-                          onChangeText={(value) =>
-                            updateSet(rowIndex, setIndex, value)
-                          }
-                          editable={!isSetDisabled}
-                          keyboardType="number-pad"
-                          maxLength={2}
-                          style={[
-                            styles.scoreInput,
-                            isCompact && styles.scoreInputCompact,
-                            isSetDisabled && styles.scoreInputDisabled,
-                          ]}
-                          selectionColor="#B36843"
-                        />
-                      </View>
-                    );
-                  })}
+                  <Text
+                    accessibilityRole="header"
+                    style={[styles.headerTitle, { fontSize: 26 * scale, lineHeight: 32 * scale }]}>
+                    Registrar Resultado
+                  </Text>
                 </View>
-              ))}
-            </View>
+              </SafeAreaView>
+            </LinearGradient>
 
-            <View style={styles.ballsSection}>
-              <Text style={styles.ballsTitle}>Pelotas</Text>
-
-              <View style={styles.ballsOptions}>
-                {rows.map((row) => {
-                  const isSelected = row.name === ballProvider;
-                  const isDisabled = !row.name;
-
-                  return (
-                    <Pressable
-                      key={`${row.id}-balls`}
-                      style={[
-                        styles.ballOption,
-                        isDisabled && styles.ballOptionDisabled,
-                      ]}
-                      onPress={() => setBallProvider(row.name)}
-                      disabled={isDisabled}>
-                      <View
-                        style={[
-                          styles.radioOuter,
-                          isSelected && styles.radioOuterSelected,
-                        ]}>
-                        {isSelected ? <View style={styles.radioInner} /> : null}
-                      </View>
-
-                      <Text
-                        style={[
-                          styles.ballOptionText,
-                          isCompact && styles.ballOptionTextCompact,
-                          isSelected && styles.ballOptionTextSelected,
-                        ]}
-                        numberOfLines={1}>
-                        {row.name || 'Seleccione jugador'}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-
-          <Pressable
-            style={[
-              styles.primaryButton,
-              isCompact && styles.primaryButtonCompact,
-              isSubmitting && styles.buttonDisabled,
-            ]}
-            onPress={handleSubmitResult}
-            disabled={isSubmitting}>
-            <Text
+            <View
               style={[
-                styles.primaryButtonText,
-                isCompact && styles.primaryButtonTextCompact,
+                styles.body,
+                {
+                  marginTop: -16 * scale,
+                  borderTopLeftRadius: 32 * scale,
+                  borderTopRightRadius: 32 * scale,
+                  paddingHorizontal: 16 * scale,
+                  paddingTop: 14 * scale,
+                },
               ]}>
-              {isSubmitting ? 'Enviando...' : 'Enviar Resultado'}
-            </Text>
-            <FontAwesome name="whatsapp" size={whatsappIconSize} color="#FFFFFF" />
-          </Pressable>
-        </View>
+              <SafeAreaView style={styles.content} edges={['bottom', 'left', 'right']}>
+                <View
+                  style={[
+                    styles.scoreboardCard,
+                    {
+                      borderRadius: 26 * scale,
+                      paddingHorizontal: 18 * scale,
+                      paddingTop: 12 * scale,
+                      paddingBottom: 14 * scale,
+                    },
+                  ]}>
+                  <View style={[styles.selectors, { gap: 12 * scale }]}>
+                    <FormSelector
+                      label="Liga"
+                      value={selectedLeagueId ? 'Liga ' + selectedLeagueId : ''}
+                      placeholder="Seleccionar liga"
+                      onPress={() => setIsLeaguePickerOpen(true)}
+                      disabled={isSubmitting}
+                      scale={scale}
+                    />
+                    {rows.map((row, rowIndex) => (
+                      <FormSelector
+                        key={row.id}
+                        label={'Jugador ' + (rowIndex + 1)}
+                        value={row.name}
+                        placeholder="Seleccionar jugador"
+                        onPress={() => openPlayerPicker(rowIndex)}
+                        disabled={!selectedLeagueId || isSubmitting}
+                        scale={scale}
+                      />
+                    ))}
+                  </View>
 
-        <View style={styles.footerSection}>
-          <Pressable
-            style={[styles.secondaryButton, isCompact && styles.secondaryButtonCompact]}
-            onPress={() => router.replace('/login')}>
-            <Feather name="home" size={isCompact ? 28 : 36} color="#FFFFFF" />
-            <Text
-              style={[
-                styles.primaryButtonText,
-                isCompact && styles.primaryButtonTextCompact,
-              ]}
-              numberOfLines={1}>
-              Volver al menu principal
-            </Text>
-          </Pressable>
-        </View>
-      </ScrollView>
+                  <Text
+                    style={[
+                      styles.sectionTitle,
+                      { fontSize: 16 * scale, lineHeight: 22 * scale, marginTop: 16 * scale },
+                    ]}>
+                    Marcador
+                  </Text>
+                  <View
+                    style={[
+                      styles.tableHeader,
+                      { minHeight: 22 * scale, gap: 8 * scale },
+                    ]}>
+                    <View style={{ width: 104 * scale }} />
+                    {['S1', 'S2', 'S3'].map((setLabel) => (
+                      <Text key={setLabel} style={[styles.setHeaderText, { fontSize: 14 * scale }]}>
+                        {setLabel}
+                      </Text>
+                    ))}
+                  </View>
 
-      {showResultNotice ? (
-        <View style={styles.noticeOverlay}>
-          <View style={styles.noticeCard}>
-            <Feather name="check-circle" size={26} color="#05B743" />
-            <Text style={styles.noticeText}>{RESULT_REGISTERED_MESSAGE}</Text>
+                  <View style={[styles.scoreRows, { gap: 10 * scale }]}>
+                    {rows.map((row, rowIndex) => (
+                      <View key={row.id} style={[styles.tableRow, { gap: 8 * scale }]}>
+                        <Text
+                          style={[
+                            styles.scorePlayerLabel,
+                            { width: 104 * scale, fontSize: 16 * scale },
+                          ]}>
+                          {'Jugador ' + (rowIndex + 1)}
+                        </Text>
+                        {row.sets.map((setValue, setIndex) => {
+                          const isSetDisabled = setIndex === 2 && !isSuperTiebreakEnabled;
+                          const scoreKey = row.id + '-set-' + setIndex;
+
+                          return (
+                            <View
+                              key={scoreKey}
+                              style={[
+                                styles.setCell,
+                                { height: scoreBoxHeight, borderRadius: 12 * scale },
+                                isSetDisabled && styles.setCellDisabled,
+                                focusedScore === scoreKey && styles.setCellFocused,
+                              ]}>
+                              <TextInput
+                                accessibilityLabel={'Jugador ' + (rowIndex + 1) + ', set ' + (setIndex + 1)}
+                                value={setValue}
+                                onChangeText={(value) => updateSet(rowIndex, setIndex, value)}
+                                onFocus={() => setFocusedScore(scoreKey)}
+                                onBlur={() => setFocusedScore(null)}
+                                editable={!isSetDisabled && !isSubmitting}
+                                keyboardType="number-pad"
+                                inputMode="numeric"
+                                maxLength={2}
+                                style={[
+                                  styles.scoreInput,
+                                  { fontSize: 20 * scale },
+                                  isSetDisabled && styles.scoreInputDisabled,
+                                  isWeb && styles.inputWeb,
+                                ]}
+                                selectionColor="#C49B74"
+                              />
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.sectionTitle,
+                      { fontSize: 16 * scale, lineHeight: 22 * scale, marginTop: 18 * scale },
+                    ]}>
+                    Pelotas
+                  </Text>
+                  <View
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Quién aportó las pelotas"
+                    style={{ marginTop: 4 * scale }}>
+                    {rows.map((row, rowIndex) => {
+                      const isSelected = Boolean(row.name) && row.name === ballProvider;
+                      const isDisabled = !row.name || isSubmitting;
+                      const playerLabel = row.name || 'Jugador ' + (rowIndex + 1);
+
+                      return (
+                        <Pressable
+                          key={row.id + '-balls'}
+                          accessibilityRole="radio"
+                          accessibilityLabel={'Pelotas: ' + playerLabel}
+                          accessibilityState={{ checked: isSelected, disabled: isDisabled }}
+                          aria-checked={isSelected}
+                          onPress={() => setBallProvider(row.name)}
+                          disabled={isDisabled}
+                          style={({ pressed }) => [
+                            styles.ballOption,
+                            { minHeight: Math.max(44, 44 * scale), gap: 12 * scale },
+                            pressed && styles.buttonPressed,
+                          ]}>
+                          <View
+                            style={[
+                              styles.radioOuter,
+                              {
+                                width: 28 * scale,
+                                height: 28 * scale,
+                                borderRadius: 14 * scale,
+                              },
+                            ]}>
+                            {isSelected ? (
+                              <View
+                                style={[
+                                  styles.radioInner,
+                                  {
+                                    width: 18 * scale,
+                                    height: 18 * scale,
+                                    borderRadius: 9 * scale,
+                                  },
+                                ]}
+                              />
+                            ) : null}
+                          </View>
+                          <Text style={[styles.ballOptionText, { fontSize: 16 * scale }]}>
+                            {playerLabel}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={{ paddingHorizontal: 10 * scale, marginTop: 14 * scale }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={isSubmitting ? 'Guardando resultado' : 'Guardar Resultado'}
+                    disabled={isSubmitting}
+                    onPress={handleSubmitResult}
+                    style={({ pressed }) => [
+                      styles.primaryButton,
+                      { borderRadius: 18 * scale },
+                      pressed && styles.buttonPressed,
+                      isSubmitting && styles.buttonDisabled,
+                    ]}>
+                    <LinearGradient
+                      colors={['#259A55', '#198D50', '#16834C']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[
+                        styles.primaryButtonSurface,
+                        {
+                          minHeight: Math.max(44, 62 * scale),
+                          borderRadius: 18 * scale,
+                          gap: 14 * scale,
+                          paddingVertical: 12 * scale,
+                        },
+                      ]}>
+                      <FontAwesome name="whatsapp" size={24 * scale} color="#F3F7E7" />
+                      <Text style={[styles.primaryButtonText, { fontSize: 16 * scale }]}>
+                        {isSubmitting ? 'Guardando...' : 'Guardar Resultado'}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </SafeAreaView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {showResultNotice ? (
+          <View style={styles.noticeOverlay}>
+            <View style={styles.noticeCard} accessibilityRole="alert">
+              <Feather name="check-circle" size={26} color="#198D50" />
+              <Text style={styles.noticeText}>{RESULT_REGISTERED_MESSAGE}</Text>
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
 
       <Modal
-        visible={activePickerRow !== null}
+        visible={isLeaguePickerOpen || activePickerRow !== null}
         transparent
         animationType="fade"
-        onRequestClose={closePlayerPicker}>
+        onRequestClose={closePicker}>
         <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={closePlayerPicker} />
-
-          <View style={styles.modalCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar selector"
+            style={styles.modalBackdrop}
+            onPress={closePicker}
+          />
+          <View style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar jugador</Text>
-              <Pressable hitSlop={8} onPress={closePlayerPicker}>
+              <Text style={styles.modalTitle} accessibilityRole="header">
+                {isLeaguePickerOpen ? 'Seleccionar liga' : 'Seleccionar jugador'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
+                style={styles.modalClose}
+                onPress={closePicker}>
                 <Feather name="x" size={22} color="#8C7B73" />
               </Pressable>
             </View>
 
-            <View style={styles.searchShell}>
-              <Feather name="search" size={18} color="#9A8D84" />
-              <TextInput
-                value={playerSearch}
-                onChangeText={setPlayerSearch}
-                placeholder="Buscar jugador"
-                placeholderTextColor="#9A8D84"
-                style={styles.searchInput}
-                selectionColor="#A66132"
-              />
-            </View>
+            {!isLeaguePickerOpen ? (
+              <View style={styles.searchShell}>
+                <Feather name="search" size={18} color="#9A8D84" />
+                <TextInput
+                  accessibilityLabel="Buscar jugador"
+                  value={playerSearch}
+                  onChangeText={setPlayerSearch}
+                  placeholder="Buscar jugador"
+                  placeholderTextColor="#9A8D84"
+                  style={[styles.searchInput, isWeb && styles.inputWeb]}
+                  selectionColor="#A66132"
+                />
+              </View>
+            ) : null}
 
             <ScrollView
               style={styles.optionsList}
               contentContainerStyle={styles.optionsContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
-              {filteredPlayers.map((player) => {
-                const isDisabled = selectedByOtherRow.includes(player.name);
-                const isSelected =
-                  activePickerRow !== null &&
-                  rows[activePickerRow]?.name === player.name;
-
-                return (
+              {isLeaguePickerOpen ? (
+                PLAYER_PICKER_LEAGUE_IDS.map((leagueId) => (
                   <Pressable
-                    key={player.id ?? player.name}
+                    key={leagueId}
+                    accessibilityRole="button"
+                    accessibilityLabel={'Liga ' + leagueId}
                     style={[
                       styles.optionRow,
-                      isSelected && styles.optionRowSelected,
-                      isDisabled && styles.optionRowDisabled,
+                      selectedLeagueId === leagueId && styles.optionRowSelected,
                     ]}
-                    onPress={() => handlePlayerSelect(player)}
-                    disabled={isDisabled}>
-                    <Text
-                      style={[
-                        styles.optionText,
-                        isSelected && styles.optionTextSelected,
-                        isDisabled && styles.optionTextDisabled,
-                      ]}>
-                      {player.name}
-                    </Text>
-
-                    {isSelected ? (
+                    onPress={() => handleLeagueSelect(leagueId)}>
+                    <Text style={styles.optionText}>{'Liga ' + leagueId}</Text>
+                    {selectedLeagueId === leagueId ? (
                       <Feather name="check" size={18} color="#A66132" />
                     ) : null}
                   </Pressable>
-                );
-              })}
+                ))
+              ) : (
+                filteredPlayers.map((player) => {
+                  const isDisabled = selectedByOtherRow.includes(player.name);
+                  const isSelected = activePickerRow !== null && rows[activePickerRow]?.name === player.name;
 
-              {filteredPlayers.length === 0 ? (
+                  return (
+                    <Pressable
+                      key={player.id ?? player.name}
+                      accessibilityRole="button"
+                      accessibilityLabel={player.name}
+                      style={[
+                        styles.optionRow,
+                        isSelected && styles.optionRowSelected,
+                        isDisabled && styles.optionRowDisabled,
+                      ]}
+                      onPress={() => handlePlayerSelect(player)}
+                      disabled={isDisabled}>
+                      <Text
+                        style={[
+                          styles.optionText,
+                          isSelected && styles.optionTextSelected,
+                          isDisabled && styles.optionTextDisabled,
+                        ]}>
+                        {player.name}
+                      </Text>
+                      {isSelected ? <Feather name="check" size={18} color="#A66132" /> : null}
+                    </Pressable>
+                  );
+                })
+              )}
+              {!isLeaguePickerOpen && filteredPlayers.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No se encontraron jugadores.
-                  </Text>
+                  <Text style={styles.emptyStateText}>No se encontraron jugadores.</Text>
                 </View>
               ) : null}
             </ScrollView>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F8F4EF',
+    alignItems: 'center',
+    backgroundColor: '#EFE8D6',
+  },
+  frame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#124F43',
+  },
+  flex: {
+    flex: 1,
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8F4EF',
-    paddingHorizontal: 18,
-    paddingTop: 0,
-    paddingBottom: 18,
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  logoSection: {
+  header: {
     width: '100%',
+    overflow: 'hidden',
+  },
+  headerAccent: {
+    position: 'absolute',
+    top: -146,
+    left: 84,
+    width: 280,
+    height: 204,
+    borderRadius: 140,
+    borderWidth: 1,
+    borderColor: 'rgba(213, 194, 129, 0.45)',
+    overflow: 'hidden',
+    transform: [{ rotate: '18deg' }],
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 10,
-    paddingBottom: 16,
   },
-  logo: {
-    width: 170,
-    height: 170,
+  headerTitle: {
+    flex: 1,
+    color: '#F6F3E4',
+    fontWeight: '600',
   },
-  centerSection: {
-    width: '100%',
-    maxWidth: 640,
-    justifyContent: 'center',
+  body: {
+    flexGrow: 1,
     alignItems: 'center',
+    backgroundColor: '#FAF7ED',
+    paddingBottom: 64,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 480,
   },
   scoreboardCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 26,
-    paddingHorizontal: 22,
-    paddingTop: 26,
-    paddingBottom: 24,
-    ...buildShadow({
-      color: '#9F6A3F',
-      offset: { width: 0, height: 18 },
-      opacity: 0.12,
-      radius: 30,
-      elevation: 10,
-      web: '0px 18px 30px rgba(159, 106, 63, 0.12)',
-    }),
   },
-  scoreboardCardCompact: {
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingTop: 20,
-    paddingBottom: 18,
-  },
-  scoreboardTitle: {
-    fontSize: 44,
-    lineHeight: 50,
-    fontWeight: '900',
-    color: '#3B170F',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  scoreboardTitleCompact: {
-    fontSize: 30,
-    lineHeight: 36,
-    marginBottom: 14,
-  },
-  table: {
+  selectors: {
     width: '100%',
   },
-  setsHeaderRow: {
+  selectorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D4CDC7',
   },
-  playerHeaderCell: {
+  fieldLabel: {
+    color: '#30362F',
+    fontWeight: '600',
+  },
+  selector: {
     flex: 1,
     minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#ECEDEB',
+    backgroundColor: '#F3F3F2',
+  },
+  selectorText: {
+    flex: 1,
+    color: '#343D35',
+  },
+  placeholderText: {
+    color: '#818781',
+  },
+  sectionTitle: {
+    color: '#293128',
+    fontWeight: '700',
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   setHeaderText: {
+    flex: 1,
+    minWidth: 0,
     textAlign: 'center',
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#8C8A88',
+    fontWeight: '600',
+    color: '#30362F',
   },
-  setHeaderTextCompact: {
-    fontSize: 17,
+  scoreRows: {
+    width: '100%',
   },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D4CDC7',
   },
-  tableRowCompact: {
-    gap: 7,
-    paddingVertical: 9,
-  },
-  lastTableRow: {
-    borderBottomWidth: 1,
-  },
-  playerCell: {
-    flex: 1,
-    minHeight: 56,
-    minWidth: 0,
-    backgroundColor: '#2384D9',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    ...buildShadow({
-      color: '#2384D9',
-      offset: { width: 0, height: 8 },
-      opacity: 0.14,
-      radius: 16,
-      elevation: 5,
-      web: '0px 8px 16px rgba(35, 132, 217, 0.14)',
-    }),
-  },
-  playerCellCompact: {
-    minHeight: 44,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-  },
-  playerInput: {
-    color: '#FFFFFF',
-    fontSize: 19,
-    fontWeight: '800',
-    paddingVertical: 0,
-    flex: 1,
-  },
-  playerInputCompact: {
-    fontSize: 12,
-  },
-  playerPlaceholder: {
-    color: '#D9E1F4',
+  scorePlayerLabel: {
+    color: '#343B33',
   },
   setCell: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2.5,
-    borderColor: '#B36843',
+    flex: 1,
+    minWidth: 0,
+    borderWidth: 2,
+    borderColor: '#DDDEDA',
+    backgroundColor: '#FFFEFC',
+    overflow: 'hidden',
   },
   setCellDisabled: {
-    backgroundColor: '#F2ECE7',
-    borderColor: '#D6C9BE',
+    backgroundColor: '#FAF8F2',
+  },
+  setCellFocused: {
+    borderColor: '#C49B74',
   },
   scoreInput: {
     width: '100%',
     height: '100%',
-    textAlign: 'center',
-    color: '#3B170F',
-    fontSize: 24,
-    fontWeight: '900',
     paddingVertical: 0,
     paddingHorizontal: 0,
-  },
-  scoreInputCompact: {
-    fontSize: 18,
+    textAlign: 'center',
+    color: '#343B33',
+    fontWeight: '600',
   },
   scoreInputDisabled: {
-    color: '#B9ACA2',
+    color: '#A9AAA4',
   },
-  ballsSection: {
-    marginTop: 18,
-  },
-  ballsTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#3B170F',
-    marginBottom: 10,
-  },
-  ballsOptions: {
-    gap: 8,
+  inputWeb: {
+    outlineStyle: 'none',
   },
   ballOption: {
-    minHeight: 34,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  ballOptionDisabled: {
-    opacity: 0.45,
   },
   radioOuter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2.5,
-    borderColor: '#B36843',
+    borderWidth: 2,
+    borderColor: '#CC996F',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioOuterSelected: {
-    borderColor: '#A66132',
-  },
   radioInner: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#B36843',
+    backgroundColor: '#CC996F',
   },
   ballOptionText: {
     flex: 1,
-    fontSize: 21,
-    color: '#3B170F',
-  },
-  ballOptionTextCompact: {
-    fontSize: 16,
-  },
-  ballOptionTextSelected: {
-    color: '#3B170F',
-  },
-  footerSection: {
-    width: '100%',
-    maxWidth: 640,
-    marginTop: 14,
+    color: '#343B33',
   },
   primaryButton: {
-    minHeight: 78,
-    borderRadius: 26,
-    backgroundColor: '#05B743',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 18,
     width: '100%',
-    marginTop: 22,
+    backgroundColor: '#198D50',
     ...buildShadow({
-      color: '#05B743',
-      offset: { width: 0, height: 16 },
-      opacity: 0.24,
-      radius: 24,
-      elevation: 8,
-      web: '0px 16px 24px rgba(5, 183, 67, 0.24)',
+      color: '#7D9F6B',
+      offset: { width: 0, height: 5 },
+      opacity: 0.15,
+      radius: 10,
+      elevation: 3,
+      web: '0px 5px 10px rgba(125, 159, 107, 0.15)',
     }),
   },
-  primaryButtonCompact: {
-    minHeight: 64,
-    borderRadius: 22,
-    gap: 12,
-    marginTop: 18,
+  primaryButtonSurface: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  primaryButtonText: {
+    color: '#F3F7E7',
+    fontWeight: '700',
+  },
+  buttonPressed: {
+    opacity: 0.86,
   },
   buttonDisabled: {
     opacity: 0.65,
   },
-  secondaryButton: {
-    minHeight: 92,
-    borderRadius: 24,
-    backgroundColor: '#7A3D1C',
+  modalClose: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 16,
-    width: '100%',
-    paddingHorizontal: 18,
-    ...buildShadow({
-      color: '#7A3D1C',
-      offset: { width: 0, height: 10 },
-      opacity: 0.2,
-      radius: 18,
-      elevation: 7,
-      web: '0px 10px 18px rgba(122, 61, 28, 0.2)',
-    }),
-  },
-  secondaryButtonCompact: {
-    minHeight: 68,
-    borderRadius: 20,
-    gap: 12,
-  },
-  primaryButtonText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  primaryButtonTextCompact: {
-    fontSize: 18,
   },
   noticeOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1217,6 +1295,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     backgroundColor: '#FDF9F3',
     borderRadius: 24,
     paddingHorizontal: 18,
