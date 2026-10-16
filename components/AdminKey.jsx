@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -36,6 +36,8 @@ const buildShadow = ({ color, offset, opacity, radius, elevation, web }) =>
       };
 
 export default function AdminKey() {
+  const { next } = useLocalSearchParams();
+  const nextScreen = Array.isArray(next) ? next[0] : next;
   const [digits, setDigits] = useState(Array(KEY_LENGTH).fill(''));
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
@@ -113,7 +115,11 @@ export default function AdminKey() {
         return;
       }
 
-      router.push('/admin-home');
+      if (nextScreen === 'sales') {
+        router.push({ pathname: '/sales-panel', params: { backTo: '/login' } });
+      } else {
+        router.push('/admin-home');
+      }
     } catch (error) {
       showUserAlert('Error de validacion', error.message);
     } finally {

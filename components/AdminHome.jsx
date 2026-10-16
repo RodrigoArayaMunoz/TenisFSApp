@@ -201,9 +201,7 @@ export default function AdminHome() {
                   label="Panel de Ventas"
                   icon="sales"
                   color="#7D3423"
-                  onPress={() =>
-                    showUserAlert('Panel de Ventas', 'El panel de ventas estará disponible próximamente.')
-                  }
+                  onPress={() => router.push('/sales-panel')}
                   scale={scale}
                 />
                 {['B', 'C'].map((leagueId) => (
