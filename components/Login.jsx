@@ -186,8 +186,8 @@ export default function Login() {
                   icon="cart"
                   iconColor="#FFFFFF"
                   colors={['#B94F20', '#A33C18', '#913416']}
-                  onPress={() => router.push({ pathname: '/admin-key', params: { next: 'sales' } })}
-                  hint="Ingresar al panel con el PIN de administrador"
+                  onPress={() => router.push({ pathname: '/sales-panel', params: { backTo: '/login' } })}
+                  hint="Ver el catálogo de productos"
                   scale={scale}
                   centered
                 />

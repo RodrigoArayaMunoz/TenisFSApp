@@ -15,8 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { showUserAlert } from '../utils/alerts';
-
 const HOME_ROUTE = '/admin-home';
 const GREEN = '#145B40';
 
@@ -218,9 +216,7 @@ export default function AdminHome() {
                   label="Gestionar Jugadores"
                   icon="players"
                   color={GREEN}
-                  onPress={() =>
-                    showUserAlert('Gestionar Jugadores', 'La gestión de jugadores estará disponible próximamente.')
-                  }
+                  onPress={() => router.push('/manage-players')}
                   scale={scale}
                 />
               </View>

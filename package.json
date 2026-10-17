@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export -p web",
+    "test": "node --test",
     "lint": "expo lint"
   },
   "dependencies": {

@@ -26,7 +26,6 @@ import {
 } from '../services/resultService';
 import { showUserAlert } from '../utils/alerts';
 
-const DEFAULT_LEAGUE_ID = 'B';
 const PLAYER_PICKER_LEAGUE_IDS = ['B', 'C'];
 const RESULT_NOTICE_DURATION = 4500;
 const WHATSAPP_FALLBACK_DELAY = 1600;
@@ -380,39 +379,35 @@ const openWhatsAppShare = async (message) => {
   }
 };
 
-function FormSelector({ label, value, placeholder, onPress, disabled, scale }) {
+function ScorePlayerSelector({ label, value, onPress, disabled, scale }) {
   return (
-    <View style={[styles.selectorRow, { gap: 10 * scale }]}>
-      <Text style={[styles.fieldLabel, { width: 84 * scale, fontSize: 16 * scale }]}>
-        {label}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={'Seleccionar ' + label.toLowerCase()}
+      accessibilityValue={{ text: value || label }}
+      accessibilityState={{ disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.playerSelector,
+        {
+          width: 120 * scale,
+          minHeight: Math.max(44, 44 * scale),
+          borderRadius: 12 * scale,
+          paddingHorizontal: 9 * scale,
+          paddingVertical: 7 * scale,
+          gap: 5 * scale,
+        },
+        value && styles.playerSelectorSelected,
+        pressed && styles.buttonPressed,
+      ]}>
+      <Text
+        style={[styles.selectorText, { fontSize: 13 * scale, lineHeight: 17 * scale }]}
+        numberOfLines={2}>
+        {value || label}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={'Seleccionar ' + label.toLowerCase()}
-        accessibilityValue={{ text: value || placeholder }}
-        onPress={onPress}
-        disabled={disabled}
-        style={({ pressed }) => [
-          styles.selector,
-          {
-            minHeight: Math.max(44, 44 * scale),
-            borderRadius: 14 * scale,
-            paddingHorizontal: 12 * scale,
-          },
-          pressed && styles.buttonPressed,
-        ]}>
-        <Text
-          style={[
-            styles.selectorText,
-            { fontSize: 14 * scale },
-            !value && styles.placeholderText,
-          ]}
-          numberOfLines={1}>
-          {value || placeholder}
-        </Text>
-        <Feather name="chevron-down" size={18 * scale} color="#838C86" />
-      </Pressable>
-    </View>
+      <Feather accessible={false} name="chevron-down" size={15 * scale} color="#63816E" />
+    </Pressable>
   );
 }
 
@@ -421,8 +416,6 @@ export default function RegisterResult() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const [hasMounted, setHasMounted] = useState(!isWeb);
-  const [selectedLeagueId, setSelectedLeagueId] = useState('');
-  const [isLeaguePickerOpen, setIsLeaguePickerOpen] = useState(false);
   const [focusedScore, setFocusedScore] = useState(null);
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [activePickerRow, setActivePickerRow] = useState(null);
@@ -525,31 +518,13 @@ export default function RegisterResult() {
   };
 
   const openPlayerPicker = (rowIndex) => {
-    if (!selectedLeagueId) {
-      return;
-    }
     setActivePickerRow(rowIndex);
     setPlayerSearch('');
   };
 
-  const closePlayerPicker = () => {
+  const closePicker = () => {
     setActivePickerRow(null);
     setPlayerSearch('');
-  };
-
-  const closePicker = () => {
-    setIsLeaguePickerOpen(false);
-    closePlayerPicker();
-  };
-
-  const handleLeagueSelect = (leagueId) => {
-    if (leagueId !== selectedLeagueId) {
-      setRows(INITIAL_ROWS);
-      setBallProvider('');
-      setFocusedScore(null);
-    }
-    setSelectedLeagueId(leagueId);
-    closePicker();
   };
 
   const handlePlayerSelect = (player) => {
@@ -562,7 +537,7 @@ export default function RegisterResult() {
     }
 
     updatePlayer(activePickerRow, player);
-    closePlayerPicker();
+    closePicker();
   };
 
   const selectedByOtherRow =
@@ -575,16 +550,10 @@ export default function RegisterResult() {
 
   const query = playerSearch.trim().toLowerCase();
   const filteredPlayers = availablePlayers.filter(
-    (player) =>
-      player.leagueId === selectedLeagueId &&
-      (!query || player.name.toLowerCase().includes(query))
+    (player) => !query || player.name.toLowerCase().includes(query)
   );
 
   const handleSubmitResult = async () => {
-    if (!selectedLeagueId) {
-      showUserAlert('Seleccione una liga', 'Debe seleccionar la liga del partido.');
-      return;
-    }
     const result = calculateMatchResult(rows);
 
     if (result.error) {
@@ -606,7 +575,7 @@ export default function RegisterResult() {
     }
 
     const ballProviderRow = rows.find((row) => row.name === ballProvider);
-    const hasMissingPlayerIds = rows.some((row) => !row.playerId);
+    const hasMissingPlayerIds = rows.some((row) => !row.playerId || !row.leagueId);
 
     if (hasMissingPlayerIds || !ballProviderRow?.playerId) {
       showUserAlert(
@@ -618,8 +587,7 @@ export default function RegisterResult() {
 
     const winnerRow = rows[result.winnerIndex];
     const loserRow = rows[result.loserIndex];
-    const matchLeagueId =
-      winnerRow.leagueId ?? loserRow.leagueId ?? DEFAULT_LEAGUE_ID;
+    const matchLeagueId = winnerRow.leagueId;
     const set3PlayerA = result.decidedBySuperTiebreak
       ? result.parsedSets[2][0]
       : null;
@@ -750,28 +718,6 @@ export default function RegisterResult() {
                       paddingBottom: 14 * scale,
                     },
                   ]}>
-                  <View style={[styles.selectors, { gap: 12 * scale }]}>
-                    <FormSelector
-                      label="Liga"
-                      value={selectedLeagueId ? 'Liga ' + selectedLeagueId : ''}
-                      placeholder="Seleccionar liga"
-                      onPress={() => setIsLeaguePickerOpen(true)}
-                      disabled={isSubmitting}
-                      scale={scale}
-                    />
-                    {rows.map((row, rowIndex) => (
-                      <FormSelector
-                        key={row.id}
-                        label={'Jugador ' + (rowIndex + 1)}
-                        value={row.name}
-                        placeholder="Seleccionar jugador"
-                        onPress={() => openPlayerPicker(rowIndex)}
-                        disabled={!selectedLeagueId || isSubmitting}
-                        scale={scale}
-                      />
-                    ))}
-                  </View>
-
                   <Text
                     style={[
                       styles.sectionTitle,
@@ -784,7 +730,7 @@ export default function RegisterResult() {
                       styles.tableHeader,
                       { minHeight: 22 * scale, gap: 8 * scale },
                     ]}>
-                    <View style={{ width: 104 * scale }} />
+                    <View style={{ width: 120 * scale }} />
                     {['S1', 'S2', 'S3'].map((setLabel) => (
                       <Text key={setLabel} style={[styles.setHeaderText, { fontSize: 14 * scale }]}>
                         {setLabel}
@@ -795,13 +741,13 @@ export default function RegisterResult() {
                   <View style={[styles.scoreRows, { gap: 10 * scale }]}>
                     {rows.map((row, rowIndex) => (
                       <View key={row.id} style={[styles.tableRow, { gap: 8 * scale }]}>
-                        <Text
-                          style={[
-                            styles.scorePlayerLabel,
-                            { width: 104 * scale, fontSize: 16 * scale },
-                          ]}>
-                          {'Jugador ' + (rowIndex + 1)}
-                        </Text>
+                        <ScorePlayerSelector
+                          label={'Jugador ' + (rowIndex + 1)}
+                          value={row.name}
+                          onPress={() => openPlayerPicker(rowIndex)}
+                          disabled={isSubmitting}
+                          scale={scale}
+                        />
                         {row.sets.map((setValue, setIndex) => {
                           const isSetDisabled = setIndex === 2 && !isSuperTiebreakEnabled;
                           const scoreKey = row.id + '-set-' + setIndex;
@@ -949,9 +895,10 @@ export default function RegisterResult() {
       </View>
 
       <Modal
-        visible={isLeaguePickerOpen || activePickerRow !== null}
+        visible={activePickerRow !== null}
         transparent
         animationType="fade"
+        accessibilityLabel="Seleccionar jugador"
         onRequestClose={closePicker}>
         <View style={styles.modalOverlay}>
           <Pressable
@@ -963,7 +910,7 @@ export default function RegisterResult() {
           <View style={styles.modalCard} accessibilityViewIsModal>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle} accessibilityRole="header">
-                {isLeaguePickerOpen ? 'Seleccionar liga' : 'Seleccionar jugador'}
+                Seleccionar jugador
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -974,60 +921,41 @@ export default function RegisterResult() {
               </Pressable>
             </View>
 
-            {!isLeaguePickerOpen ? (
-              <View style={styles.searchShell}>
-                <Feather name="search" size={18} color="#9A8D84" />
-                <TextInput
-                  accessibilityLabel="Buscar jugador"
-                  value={playerSearch}
-                  onChangeText={setPlayerSearch}
-                  placeholder="Buscar jugador"
-                  placeholderTextColor="#9A8D84"
-                  style={[styles.searchInput, isWeb && styles.inputWeb]}
-                  selectionColor="#A66132"
-                />
-              </View>
-            ) : null}
+            <View style={styles.searchShell}>
+              <Feather name="search" size={18} color="#9A8D84" />
+              <TextInput
+                accessibilityLabel="Buscar jugador"
+                value={playerSearch}
+                onChangeText={setPlayerSearch}
+                placeholder="Buscar jugador"
+                placeholderTextColor="#9A8D84"
+                style={[styles.searchInput, isWeb && styles.inputWeb]}
+                selectionColor="#A66132"
+              />
+            </View>
 
             <ScrollView
               style={styles.optionsList}
               contentContainerStyle={styles.optionsContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
-              {isLeaguePickerOpen ? (
-                PLAYER_PICKER_LEAGUE_IDS.map((leagueId) => (
+              {filteredPlayers.map((player) => {
+                const isDisabled = selectedByOtherRow.includes(player.name);
+                const isSelected = activePickerRow !== null && rows[activePickerRow]?.name === player.name;
+
+                return (
                   <Pressable
-                    key={leagueId}
+                    key={player.id ?? player.name}
                     accessibilityRole="button"
-                    accessibilityLabel={'Liga ' + leagueId}
+                    accessibilityLabel={player.name}
                     style={[
                       styles.optionRow,
-                      selectedLeagueId === leagueId && styles.optionRowSelected,
+                      isSelected && styles.optionRowSelected,
+                      isDisabled && styles.optionRowDisabled,
                     ]}
-                    onPress={() => handleLeagueSelect(leagueId)}>
-                    <Text style={styles.optionText}>{'Liga ' + leagueId}</Text>
-                    {selectedLeagueId === leagueId ? (
-                      <Feather name="check" size={18} color="#A66132" />
-                    ) : null}
-                  </Pressable>
-                ))
-              ) : (
-                filteredPlayers.map((player) => {
-                  const isDisabled = selectedByOtherRow.includes(player.name);
-                  const isSelected = activePickerRow !== null && rows[activePickerRow]?.name === player.name;
-
-                  return (
-                    <Pressable
-                      key={player.id ?? player.name}
-                      accessibilityRole="button"
-                      accessibilityLabel={player.name}
-                      style={[
-                        styles.optionRow,
-                        isSelected && styles.optionRowSelected,
-                        isDisabled && styles.optionRowDisabled,
-                      ]}
-                      onPress={() => handlePlayerSelect(player)}
-                      disabled={isDisabled}>
+                    onPress={() => handlePlayerSelect(player)}
+                    disabled={isDisabled}>
+                    <View style={styles.optionPlayerInfo}>
                       <Text
                         style={[
                           styles.optionText,
@@ -1036,12 +964,13 @@ export default function RegisterResult() {
                         ]}>
                         {player.name}
                       </Text>
-                      {isSelected ? <Feather name="check" size={18} color="#A66132" /> : null}
-                    </Pressable>
-                  );
-                })
-              )}
-              {!isLeaguePickerOpen && filteredPlayers.length === 0 ? (
+                      <Text style={styles.optionLeagueText}>{'Liga ' + player.leagueId}</Text>
+                    </View>
+                    {isSelected ? <Feather name="check" size={18} color="#A66132" /> : null}
+                  </Pressable>
+                );
+              })}
+              {filteredPlayers.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyStateText}>No se encontraron jugadores.</Text>
                 </View>
@@ -1115,34 +1044,23 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#FFFFFF',
   },
-  selectors: {
-    width: '100%',
-  },
-  selectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldLabel: {
-    color: '#30362F',
-    fontWeight: '600',
-  },
-  selector: {
-    flex: 1,
+  playerSelector: {
+    flexShrink: 0,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
     borderWidth: 1,
     borderColor: '#ECEDEB',
     backgroundColor: '#F3F3F2',
   },
+  playerSelectorSelected: {
+    borderColor: '#D8E3D5',
+    backgroundColor: '#F0F5ED',
+  },
   selectorText: {
     flex: 1,
     color: '#343D35',
-  },
-  placeholderText: {
-    color: '#818781',
   },
   sectionTitle: {
     color: '#293128',
@@ -1165,9 +1083,6 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  scorePlayerLabel: {
-    color: '#343B33',
   },
   setCell: {
     flex: 1,
@@ -1368,10 +1283,19 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   optionText: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#4A3C32',
+  },
+  optionPlayerInfo: {
+    flex: 1,
+    paddingVertical: 10,
+  },
+  optionLeagueText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#8E847D',
+    marginTop: 2,
   },
   optionTextSelected: {
     color: '#8B522C',

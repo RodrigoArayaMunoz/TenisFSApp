@@ -260,9 +260,25 @@ export default function AdminDashboard() {
                   paddingTop: (Platform.OS === 'web' ? 52 : 22) * scale,
                   paddingBottom: 44 * scale,
                   paddingHorizontal: 18 * scale,
-                  gap: 16 * scale,
+                  gap: 10 * scale,
                 },
               ]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Volver al administrador"
+                accessibilityHint="Regresa al menú de administrador"
+                onPress={() => router.dismissTo('/admin-home')}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  {
+                    width: Math.max(44, 44 * scale),
+                    height: Math.max(44, 44 * scale),
+                    borderRadius: 14 * scale,
+                  },
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Feather accessible={false} name="arrow-left" size={24 * scale} color="#FFFCF4" />
+              </Pressable>
               <Text
                 accessibilityRole="header"
                 style={[
@@ -384,6 +400,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', backgroundColor: '#F5F0E2' },
   frame: { flex: 1, width: '100%', maxWidth: 560, backgroundColor: '#713C24' },
   header: { flexDirection: 'row', alignItems: 'center' },
+  backButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    backgroundColor: 'rgba(255, 252, 244, 0.1)',
+  },
   headerTitle: { flex: 1, minWidth: 0, fontWeight: '700', color: '#FFFCF4' },
   avatar: {
     borderRadius: 100,
