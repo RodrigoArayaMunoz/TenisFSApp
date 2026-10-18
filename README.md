@@ -9,6 +9,39 @@ npm install
 npm run start
 ```
 
+## Versión web de producción
+
+Enlace para compartir: **https://tenisfsapp.expo.app/**.
+
+La aplicación se publica en EAS Hosting usando el proyecto Expo existente
+`@rodrigoarayamunoz/TenisFSApp`. El enlace abre la versión web en navegadores de
+teléfono y computador; los jugadores, resultados y pedidos se consultan en Supabase.
+
+Para publicar las próximas actualizaciones desde esta carpeta:
+
+```bash
+npm test
+npm run deploy:web
+```
+
+`deploy:web` primero compila mediante `build:web:production`, utilizando las
+variables del entorno **production** de EAS, y después publica `dist/` como la
+versión de producción. El enlace principal se conserva al actualizar. El comando
+requiere EAS CLI instalado (`npm install --global eas-cli`) y una sesión con acceso
+al proyecto (`eas login`).
+
+Las variables `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` deben
+estar configuradas en el entorno **production** de EAS. Son valores públicos del
+cliente; las claves administrativas de Supabase no se incluyen en la aplicación.
+Si cambian estas variables, volver a compilar y publicar para incorporarlas al
+JavaScript del navegador.
+
+Para generar solamente los archivos web de producción: `npm run build:web:production`.
+Para desarrollo local se mantiene `npm run web`.
+
+Las fotografías del catálogo usan nombres sin espacios para que sus rutas se
+resuelvan correctamente en EAS Hosting. Conservar ese formato al agregar imágenes.
+
 ## Flujo inicial actual
 
 - `app/index.tsx`: splash screen personalizado con duracion de 2.4 segundos.

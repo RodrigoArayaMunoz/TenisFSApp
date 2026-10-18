@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
+import { basename } from 'node:path';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
@@ -37,6 +38,12 @@ test('the default view pins grip first and stringing service second without losi
     assert.equal(new Set(ids(products)).size, original.length);
     assert.deepEqual(ids(products).sort(), [...original].sort());
     assert.deepEqual(ids(catalog.SALES_PRODUCTS), original);
+  }
+});
+
+test('catalog images use filenames that load without URL encoding on the production host', () => {
+  for (const product of catalog.SALES_PRODUCTS) {
+    assert.match(basename(product.image), /^[a-z0-9][a-z0-9._-]*$/);
   }
 });
 

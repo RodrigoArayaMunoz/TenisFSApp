@@ -8,6 +8,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export -p web",
+    "build:web:production": "eas env:exec production \"npm run build:web\" --non-interactive",
+    "predeploy:web": "npm run build:web:production",
+    "deploy:web": "eas deploy --prod --environment production --no-source-maps",
     "test": "node --test",
     "lint": "expo lint"
   },
