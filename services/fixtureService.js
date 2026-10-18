@@ -100,7 +100,7 @@ export const buildFixtureWhatsAppMessage = ({ league, playerA, playerB, matchDat
   '',
   `*${playerA.name} vs ${playerB.name}*`,
   `📅 ${formatFixtureDate(matchDate)}`,
-  `🕒 ${matchTime}`,
+  `🕒 ${matchTime} hrs.`,
 ].join('\n');
 
 export const fetchFixturesByLeague = async (leagueId, { offset = 0, signal } = {}) => {
