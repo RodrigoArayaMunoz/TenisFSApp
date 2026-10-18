@@ -89,10 +89,10 @@ test('server and connection errors retain actionable messages', async () => {
   await assert.rejects(timeout.submitFixture(request), /no se duplicará/);
 });
 
-test('WhatsApp includes the exact league, players and Chilean schedule without a court', () => {
+test('WhatsApp includes the league, players, date and time without the introductory title', () => {
   const message = makeService().buildFixtureWhatsAppMessage({ ...details, league: { name: 'Liga B' } });
-  for (const text of ['Liga B', 'Álex López vs Rodrigo Araya', '20 de octubre de 2099', '18:30 hrs. (hora de Chile)']) assert.ok(message.includes(text));
-  assert.equal(/cancha/i.test(message), false);
+  for (const text of ['Liga B', 'Álex López vs Rodrigo Araya', '20 de octubre de 2099', '🕒 18:30']) assert.ok(message.includes(text));
+  assert.equal(/cancha|nuevo partido programado|hora de chile|hrs\.|🎾/i.test(message), false);
 });
 
 const card = (changes = {}) => ({
