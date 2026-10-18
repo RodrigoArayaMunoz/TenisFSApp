@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { clearAdminAccess } from '../services/adminSession';
 
 const HOME_ROUTE = '/admin-home';
 const GREEN = '#145B40';
@@ -44,6 +45,14 @@ function MenuIcon({ type, scale }) {
 
   if (type === 'players') {
     return <FontAwesome name="users" size={29 * scale} color={GREEN} />;
+  }
+
+  if (type === 'orders') {
+    return (
+      <LinearGradient colors={['#E8F0DF', '#D9E6CD']} style={[styles.cartBadge, { width: 40 * scale, height: 40 * scale }]}>
+        <Feather name="clipboard" size={24 * scale} color={GREEN} />
+      </LinearGradient>
+    );
   }
 
   return <AntDesign name="trophy" size={33 * scale} color="#DE871D" />;
@@ -116,7 +125,7 @@ export default function AdminHome() {
   };
 
   const closeSession = () => {
-    // Administrator access uses a PIN; there is no persisted auth session.
+    clearAdminAccess();
     router.dismissAll();
     router.replace('/login');
   };
@@ -200,6 +209,13 @@ export default function AdminHome() {
                   icon="sales"
                   color="#7D3423"
                   onPress={() => router.push('/sales-panel')}
+                  scale={scale}
+                />
+                <MenuOption
+                  label="Gestión de Pedidos"
+                  icon="orders"
+                  color={GREEN}
+                  onPress={() => router.push('/manage-orders')}
                   scale={scale}
                 />
                 {['B', 'C'].map((leagueId) => (

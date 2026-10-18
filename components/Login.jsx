@@ -182,7 +182,7 @@ export default function Login() {
                   centered
                 />
                 <MenuButton
-                  label="Panel de Ventas"
+                  label="!!Compra tus Productos¡¡"
                   icon="cart"
                   iconColor="#FFFFFF"
                   colors={['#B94F20', '#A33C18', '#913416']}

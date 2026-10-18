@@ -19,6 +19,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isSupabaseConfigured, verifyAdminKey } from '../services/adminService';
+import { rememberAdminAccess } from '../services/adminSession';
 import { showUserAlert } from '../utils/alerts';
 
 const KEY_LENGTH = 4;
@@ -115,7 +116,10 @@ export default function AdminKey() {
         return;
       }
 
-      if (nextScreen === 'sales') {
+      rememberAdminAccess(adminKey);
+      if (nextScreen === 'orders') {
+        router.replace('/manage-orders');
+      } else if (nextScreen === 'sales') {
         router.push({ pathname: '/sales-panel', params: { backTo: '/login' } });
       } else {
         router.push('/admin-home');

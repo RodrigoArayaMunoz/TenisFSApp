@@ -53,6 +53,27 @@ const requestSupabase = async (path, options = {}) => {
   return body;
 };
 
+export const fetchActivePlayers = async ({ signal } = {}) => {
+  const players = [];
+  const pageSize = 1000;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const params = new URLSearchParams({
+      select: 'id,name,league_id,league:leagues(id,name)',
+      active: 'eq.true',
+      order: 'name.asc,id.asc',
+      limit: String(pageSize),
+      offset: String(offset),
+    });
+    const page = await requestSupabase(`players?${params.toString()}`, { signal });
+    if (!Array.isArray(page)) {
+      throw new Error('No se pudieron cargar los jugadores. Intenta nuevamente.');
+    }
+    players.push(...page);
+    if (page.length < pageSize) return players;
+  }
+};
+
 export const fetchPlayersByLeague = async (leagueId) => {
   const params = new URLSearchParams({
     select: 'id,name,league_id',

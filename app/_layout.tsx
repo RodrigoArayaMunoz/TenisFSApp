@@ -11,7 +11,9 @@ export default function RootLayout() {
         <Stack.Screen name="admin-key" />
         <Stack.Screen name="admin-home" />
         <Stack.Screen name="manage-players" />
+        <Stack.Screen name="manage-orders" />
         <Stack.Screen name="sales-panel" />
+        <Stack.Screen name="product-detail" />
         <Stack.Screen name="admin-dashboard" />
         <Stack.Screen name="league-standings" />
       </Stack>
