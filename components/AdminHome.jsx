@@ -33,12 +33,12 @@ function MenuIcon({ type, scale }) {
     );
   }
 
-  if (type === 'sales') {
+  if (type === 'fixture') {
     return (
       <LinearGradient
-        colors={['#B95124', '#93401F']}
+        colors={['#E8F0DF', '#D9E6CD']}
         style={[styles.cartBadge, { width: 40 * scale, height: 40 * scale }]}>
-        <Feather name="shopping-cart" size={24 * scale} color="#FFFFFF" />
+        <Feather name="calendar" size={24 * scale} color={GREEN} />
       </LinearGradient>
     );
   }
@@ -205,10 +205,10 @@ export default function AdminHome() {
                   scale={scale}
                 />
                 <MenuOption
-                  label="Panel de Ventas"
-                  icon="sales"
-                  color="#7D3423"
-                  onPress={() => router.push('/sales-panel')}
+                  label="Crear Fixture"
+                  icon="fixture"
+                  color={GREEN}
+                  onPress={() => router.push('/create-fixture')}
                   scale={scale}
                 />
                 <MenuOption

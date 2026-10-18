@@ -6,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -25,10 +24,10 @@ import {
   submitPendingMatchResult,
 } from '../services/resultService';
 import { showUserAlert } from '../utils/alerts';
+import { openWhatsAppShare } from '../utils/whatsapp';
 
 const PLAYER_PICKER_LEAGUE_IDS = ['B', 'C'];
 const RESULT_NOTICE_DURATION = 4500;
-const WHATSAPP_FALLBACK_DELAY = 1600;
 const RESULT_REGISTERED_MESSAGE =
   'Resultado registrado, el administrador debe validar el resultado para actualizar la tabla de posiciones.';
 const isWeb = Platform.OS === 'web';
@@ -285,98 +284,6 @@ const buildWhatsAppMessage = ({ rows, result, ballProvider }) => {
     `*Ganador: ${result.winner}*`,
     `🎾🎾🎾 Pelotas: ${ballProvider}`,
   ].join('\n');
-};
-
-const buildWhatsAppLinks = (message) => {
-  const encodedMessage = encodeURIComponent(message);
-
-  return {
-    appUrl: `whatsapp://send?text=${encodedMessage}`,
-    androidIntentUrl:
-      `intent://send?text=${encodedMessage}` +
-      '#Intent;scheme=whatsapp;end',
-    fallbackUrl: `https://wa.me/?text=${encodedMessage}`,
-  };
-};
-
-const getWhatsAppWebLaunchUrl = ({ appUrl, androidIntentUrl }) => {
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-
-  return /Android/i.test(userAgent) ? androidIntentUrl : appUrl;
-};
-
-const openWhatsAppFromWeb = (links) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  const launchUrl = getWhatsAppWebLaunchUrl(links);
-  let fallbackTimeoutId;
-  let openedExternalApp = false;
-
-  const markExternalAppOpened = () => {
-    openedExternalApp = true;
-    cleanup();
-  };
-
-  const handleVisibilityChange = () => {
-    if (typeof document !== 'undefined' && document.hidden) {
-      markExternalAppOpened();
-    }
-  };
-
-  const cleanup = () => {
-    if (fallbackTimeoutId) {
-      window.clearTimeout(fallbackTimeoutId);
-      fallbackTimeoutId = null;
-    }
-
-    window.removeEventListener('blur', markExternalAppOpened);
-    window.removeEventListener('pagehide', markExternalAppOpened);
-
-    if (typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }
-  };
-
-  window.addEventListener('blur', markExternalAppOpened, { once: true });
-  window.addEventListener('pagehide', markExternalAppOpened, { once: true });
-
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-  }
-
-  fallbackTimeoutId = window.setTimeout(() => {
-    cleanup();
-
-    const pageIsHidden = typeof document !== 'undefined' && document.hidden;
-
-    if (!openedExternalApp && !pageIsHidden) {
-      window.location.assign(links.fallbackUrl);
-    }
-  }, WHATSAPP_FALLBACK_DELAY);
-
-  try {
-    window.location.assign(launchUrl);
-  } catch {
-    cleanup();
-    window.location.assign(links.fallbackUrl);
-  }
-};
-
-const openWhatsAppShare = async (message) => {
-  const links = buildWhatsAppLinks(message);
-
-  if (Platform.OS === 'web') {
-    openWhatsAppFromWeb(links);
-    return;
-  }
-
-  try {
-    await Linking.openURL(links.appUrl);
-  } catch {
-    await Linking.openURL(links.fallbackUrl);
-  }
 };
 
 function ScorePlayerSelector({ label, value, onPress, disabled, scale }) {

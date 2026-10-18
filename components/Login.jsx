@@ -94,7 +94,7 @@ export default function Login() {
     ? Math.max(14, Math.min(54, height * 0.067) - insets.top)
     : 44;
   const availableHeight = height - insets.top - insets.bottom;
-  const menuHeight = (66 * 5 + 10 * 4) * scale;
+  const menuHeight = (66 * 6 + 10 * 5) * scale;
   const headerTextHeight = (30 + 24) * scale + 2;
   const reservedHeight = menuHeight + headerTextHeight + (19 + 24) * scale;
   const logoSize = hasMounted
@@ -190,6 +190,15 @@ export default function Login() {
                   hint="Ver el catálogo de productos"
                   scale={scale}
                   centered
+                />
+                <MenuButton
+                  label="Ver Fixture Partidos"
+                  icon="calendar-check-outline"
+                  iconColor="#D08022"
+                  colors={['#FFFFFF', '#FFFEFC']}
+                  onPress={() => router.push('/fixture-matches')}
+                  hint="Consultar los partidos confirmados y filtrar por liga"
+                  scale={scale}
                 />
                 {leagues.map((leagueId) => (
                   <MenuButton

@@ -84,6 +84,47 @@ la gestión de jugadores; la validación de ligas de los partidos se gestiona ap
 Verificación local: `npm test`, `npx tsc --noEmit`, `npm run lint` y
 `npm run build:web`.
 
+## Crear Fixture
+
+En **Administrador → Crear Fixture** se seleccionan la liga, la fecha, la hora y
+dos jugadores activos de esa liga. Al cambiar de liga se limpian los jugadores;
+no se pueden cruzar ligas ni seleccionar al mismo jugador dos veces. No hay
+campo de cancha. La fecha y hora corresponden a Chile (`America/Santiago`).
+La opción **Panel de Ventas** queda oculta en el menú de administración.
+
+Para habilitar el guardado, ejecutar una vez
+[`supabase/fixtures.sql`](supabase/fixtures.sql) en el SQL Editor del proyecto,
+después de `results_schema.sql`. Crea la tabla `fixtures` y la función
+`create_fixture`, sin modificar los resultados ni las posiciones. Se puede
+volver a ejecutar sin borrar partidos. Las claves foráneas y la función
+verifican que ambos jugadores pertenezcan a la misma liga; la función también
+comprueba que estén activos y que la fecha sea futura.
+
+**Agregar Partido** confirma el registro en Supabase y luego abre WhatsApp con
+la liga, los nombres, la fecha y la hora. Utiliza la misma apertura de WhatsApp
+que **Registrar Resultado**; el usuario elige el destinatario y envía el texto.
+Si WhatsApp falla, el partido permanece guardado y se puede volver a compartir
+sin crear otro registro. Los reintentos de un guardado fallido conservan el
+identificador de solicitud para evitar duplicados.
+
+Las pruebas [`supabase/tests/fixtures.test.sql`](supabase/tests/fixtures.test.sql)
+comprueban las ligas, los jugadores activos, las fechas, los permisos y los
+reintentos en una base de pruebas; revierten sus datos al terminar.
+
+### Ver Fixture Partidos
+
+En la bienvenida, debajo de **¡¡Compra tus Productos!!**, **Ver Fixture Partidos**
+abre los encuentros guardados en `fixtures`. Las pestañas consultan las ligas
+disponibles y muestran sus partidos en orden de fecha y hora, con los nombres de
+los jugadores y la etiqueta **Confirmado**, sin cancha. Los horarios son de Chile.
+Incluye actualización, estados vacíos y de error, reintento y carga de más partidos.
+
+Para habilitar la consulta pública, ejecutar (o volver a ejecutar) el archivo
+[`supabase/fixtures.sql`](supabase/fixtures.sql) completo. Agrega `list_fixtures`,
+que permite consultar únicamente los nombres y horarios por liga; conserva los
+partidos existentes y no concede escritura directa a las tablas. Los partidos
+creados desde el administrador se muestran como confirmados.
+
 ## Catálogo de ventas
 
 Los filtros **Todos**, **Cuerdas** y **Pelotas** muestran las fotografías locales
